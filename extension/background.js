@@ -28,6 +28,9 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     const res = await fetch(`${SCAMSHIELD_API}/api/analyze`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      // Send ScamShield cookies so signed-in users get their plan (Pro/Unlimited);
+      // falls back to an anonymous free check if not signed in.
+      credentials: "include",
       body: JSON.stringify({ text }),
     });
     const data = await res.json().catch(() => ({}));

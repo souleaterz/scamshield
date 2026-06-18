@@ -5,11 +5,23 @@
   "description": "Right-click any text to instantly check whether it's a scam, powered by ScamShield.",
   "permissions": ["contextMenus", "scripting", "activeTab", "storage"],
   "host_permissions": ["https://scamshield-roan.vercel.app/*"],
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
   "background": {
     "service_worker": "background.js"
   },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "ScamShield"
+    "default_title": "ScamShield",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
   }
 }

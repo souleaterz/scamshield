@@ -29,6 +29,8 @@ async function check() {
     const res = await fetch(`${SCAMSHIELD_API}/api/analyze`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      // Send ScamShield cookies so signed-in users get their plan.
+      credentials: "include",
       body: JSON.stringify({ text }),
     });
     const data = await res.json().catch(() => ({}));
