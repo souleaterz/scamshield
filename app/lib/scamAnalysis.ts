@@ -26,7 +26,7 @@ export interface Verdict {
 }
 
 /** Subscription tier — drives which model handles the check. */
-export type Tier = "free" | "pro";
+export type Tier = "free" | "pro" | "unlimited";
 
 export interface AnalyzeInput {
   text?: string;
@@ -40,6 +40,7 @@ export interface AnalyzeInput {
 const MODELS: Record<Tier, string> = {
   free: "claude-haiku-4-5",
   pro: "claude-sonnet-4-6",
+  unlimited: "claude-sonnet-4-6",
 };
 
 const SYSTEM_PROMPT = `You are ScamShield, an expert fraud and scam detection analyst. \

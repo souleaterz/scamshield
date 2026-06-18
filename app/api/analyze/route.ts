@@ -7,6 +7,7 @@ import {
 } from "@/app/lib/scamAnalysis";
 import { getUserId, getClientIp } from "@/app/lib/auth";
 import { checkRateLimit, recordCheck } from "@/app/lib/rateLimit";
+import { getTierForUser } from "@/app/lib/subscription";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -76,8 +77,8 @@ export async function POST(request: Request) {
     const ip = getClientIp(request);
     const identifier = userId ? `user:${userId}` : `ip:${ip}`;
     const identifierType: "ip" | "user" = userId ? "user" : "ip";
-    // Everyone is on the free tier until Stripe billing lands in phase 3.
-    const tier: Tier = "free";
+    // Signed-in users get their subscribed tier; anonymous visitors are free.
+    const tier: Tier = await getTierForUser(userId);
 
     const limit = await checkRateLimit(identifier, tier);
     if (!limit.allowed) {

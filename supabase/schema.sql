@@ -20,3 +20,23 @@ create index if not exists usage_checks_identifier_created_idx
 -- (server-side), which bypasses RLS — so no public policies are needed.
 -- This ensures the anon/public key can never read or write usage data.
 alter table public.usage_checks enable row level security;
+
+
+-- Subscriptions: one row per signed-in user, kept in sync by the Stripe webhook.
+-- The user_id is the Clerk user ID. Drives which tier (and model + limit) a user gets.
+create table if not exists public.subscriptions (
+  user_id                text primary key,            -- Clerk user ID
+  stripe_customer_id     text,
+  stripe_subscription_id text,
+  tier                   text not null default 'free' -- 'free' | 'pro' | 'unlimited'
+                           check (tier in ('free', 'pro', 'unlimited')),
+  status                 text,                         -- Stripe subscription status
+  current_period_end     timestamptz,
+  updated_at             timestamptz not null default now()
+);
+
+create index if not exists subscriptions_customer_idx
+  on public.subscriptions (stripe_customer_id);
+
+-- Same lockdown: written only by the server via the service-role key.
+alter table public.subscriptions enable row level security;

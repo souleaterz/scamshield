@@ -1,10 +1,11 @@
 import { getSupabaseAdmin } from "@/app/lib/supabase";
 import type { RiskLevel, Tier } from "@/app/lib/scamAnalysis";
 
-/** Daily check allowance per identifier, by tier. */
+/** Daily check allowance per identifier, by tier. Infinity = unmetered. */
 export const DAILY_LIMITS: Record<Tier, number> = {
   free: 1,
   pro: 200,
+  unlimited: Infinity,
 };
 
 export interface RateLimitResult {
@@ -32,6 +33,12 @@ export async function checkRateLimit(
   tier: Tier,
 ): Promise<RateLimitResult> {
   const limit = DAILY_LIMITS[tier];
+
+  // Unmetered tiers never need a count.
+  if (!Number.isFinite(limit)) {
+    return { allowed: true, used: 0, limit, remaining: limit, enforced: true };
+  }
+
   const supabase = getSupabaseAdmin();
 
   if (!supabase) {
