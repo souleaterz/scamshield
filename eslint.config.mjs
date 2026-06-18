@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // The browser extension is a standalone MV3 project with its own globals.
+    "extension/**",
   ]),
 ]);
 

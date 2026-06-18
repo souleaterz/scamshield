@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "ScamShield — Scam Checker",
+  "version": "1.0.0",
+  "description": "Right-click any text to instantly check whether it's a scam, powered by ScamShield.",
+  "permissions": ["contextMenus", "scripting", "activeTab", "storage"],
+  "host_permissions": ["https://scamshield-roan.vercel.app/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "ScamShield"
+  }
+}

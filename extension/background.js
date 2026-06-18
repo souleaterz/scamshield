@@ -1,0 +1,133 @@
+importScripts("config.js");
+
+const MENU_ID = "scamshield-check";
+
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.contextMenus.create({
+    id: MENU_ID,
+    title: 'Check "%s" with ScamShield',
+    contexts: ["selection"],
+  });
+});
+
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+  if (info.menuItemId !== MENU_ID || !tab?.id || !info.selectionText) return;
+  const tabId = tab.id;
+  const text = info.selectionText;
+
+  await paint(tabId, { state: "loading", site: SCAMSHIELD_API });
+
+  try {
+    const res = await fetch(`${SCAMSHIELD_API}/api/analyze`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
+    const data = await res.json().catch(() => ({}));
+
+    if (res.status === 429) {
+      await paint(tabId, { state: "limit", site: SCAMSHIELD_API });
+    } else if (!res.ok) {
+      await paint(tabId, {
+        state: "error",
+        site: SCAMSHIELD_API,
+        error: data?.error || "Something went wrong.",
+      });
+    } else {
+      await paint(tabId, { state: "result", site: SCAMSHIELD_API, verdict: data });
+    }
+  } catch {
+    await paint(tabId, {
+      state: "error",
+      site: SCAMSHIELD_API,
+      error: "Couldn't reach ScamShield. Check your connection.",
+    });
+  }
+});
+
+function paint(tabId, payload) {
+  return chrome.scripting
+    .executeScript({ target: { tabId }, func: renderOverlay, args: [payload] })
+    .catch(() => {
+      // Some pages (e.g. chrome:// or the Web Store) block injection — ignore.
+    });
+}
+
+// Runs in the page (isolated world). Must be fully self-contained.
+function renderOverlay(payload) {
+  const HOST_ID = "__scamshield_overlay_host__";
+  let host = document.getElementById(HOST_ID);
+  if (!host) {
+    host = document.createElement("div");
+    host.id = HOST_ID;
+    host.style.cssText =
+      "position:fixed;top:16px;right:16px;z-index:2147483647;all:initial;";
+    (document.documentElement || document.body).appendChild(host);
+    host.attachShadow({ mode: "open" });
+  }
+  const shadow = host.shadowRoot;
+
+  const COLORS = { safe: "#10b981", suspicious: "#f59e0b", likely_scam: "#ef4444" };
+  const LABELS = { safe: "Safe", suspicious: "Suspicious", likely_scam: "Likely Scam" };
+
+  function esc(s) {
+    return String(s == null ? "" : s).replace(
+      /[&<>"']/g,
+      (c) =>
+        ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]),
+    );
+  }
+
+  const head = `<div class="row">
+      <strong style="font-size:14px;">🛡️ ScamShield</strong>
+      <button class="close" aria-label="Close">×</button>
+    </div>`;
+
+  let body;
+  if (payload.state === "loading") {
+    body = `${head}<p class="muted">Checking this for scams…</p>`;
+  } else if (payload.state === "limit") {
+    body = `${head}<p class="muted">You've used today's free check.
+      <a href="${esc(payload.site)}" target="_blank" rel="noreferrer">Upgrade</a> for more.</p>`;
+  } else if (payload.state === "error") {
+    body = `${head}<p class="muted">${esc(payload.error)}</p>`;
+  } else {
+    const v = payload.verdict || {};
+    const color = COLORS[v.risk_level] || "#64748b";
+    const label = LABELS[v.risk_level] || v.risk_level || "Unknown";
+    const flags = Array.isArray(v.red_flags)
+      ? v.red_flags
+          .slice(0, 3)
+          .map((f) => `<div class="li"><span class="dot">•</span><span>${esc(f)}</span></div>`)
+          .join("")
+      : "";
+    body = `<div class="row">
+        <span class="badge" style="background:${color};">${esc(label)}</span>
+        <button class="close" aria-label="Close">×</button>
+      </div>
+      <p class="summary">${esc(v.summary)}</p>
+      <div class="meta">Confidence ${esc(v.confidence)}% · ${esc(v.detected_type)}</div>
+      ${flags ? `<div class="h">Red flags</div>${flags}` : ""}
+      <div class="foot"><a href="${esc(payload.site)}" target="_blank" rel="noreferrer">Open full result on ScamShield →</a></div>`;
+  }
+
+  shadow.innerHTML = `<style>
+    *{box-sizing:border-box;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
+    .card{width:320px;background:#fff;border:1px solid #e2e8f0;border-radius:16px;
+      box-shadow:0 12px 32px rgba(0,0,0,.18);padding:16px;color:#0f172a;}
+    .row{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+    .badge{font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;color:#fff;}
+    .close{cursor:pointer;border:none;background:none;color:#94a3b8;font-size:20px;line-height:1;padding:0;}
+    .summary{margin:12px 0 0;font-size:14px;line-height:1.45;}
+    .meta{margin-top:6px;font-size:12px;color:#64748b;}
+    .muted{margin:12px 0 0;font-size:14px;color:#475569;}
+    .h{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#64748b;margin:14px 0 4px;}
+    .li{display:flex;gap:6px;font-size:13px;margin:3px 0;}
+    .dot{color:#ef4444;}
+    .foot{margin-top:14px;font-size:12px;}
+    a{color:#2563eb;text-decoration:none;}
+  </style><div class="card">${body}</div>`;
+
+  const closeBtn = shadow.querySelector(".close");
+  if (closeBtn) closeBtn.addEventListener("click", () => host.remove());
+}
