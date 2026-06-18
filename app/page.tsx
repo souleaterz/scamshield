@@ -1,3 +1,4 @@
+import Link from "next/link";
 import ScamChecker from "@/app/components/ScamChecker";
 import { getUserId, isClerkConfigured } from "@/app/lib/auth";
 import { getTierForUser } from "@/app/lib/subscription";
@@ -35,9 +36,19 @@ export default async function Home({
         justUpgraded={justUpgraded}
       />
 
-      <footer className="mt-auto pt-6 text-center text-xs text-slate-400">
-        ScamShield gives guidance, not a guarantee. When in doubt, contact the
-        organisation directly using details you trust.
+      <footer className="mt-auto space-y-2 pt-6 text-center text-xs text-slate-400">
+        <p>
+          <Link
+            href="/scams"
+            className="font-medium text-blue-600 hover:text-blue-700"
+          >
+            Common scams &amp; how to spot them
+          </Link>
+        </p>
+        <p>
+          ScamShield gives guidance, not a guarantee. When in doubt, contact the
+          organisation directly using details you trust.
+        </p>
       </footer>
     </main>
   );

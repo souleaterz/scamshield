@@ -4,6 +4,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 import AuthHeader from "@/app/components/AuthHeader";
 import { isClerkConfigured } from "@/app/lib/auth";
+import { SITE_URL, SITE_NAME } from "@/app/lib/site";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -16,9 +17,21 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ScamShield — Is it a scam?",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "ScamShield — Is it a scam?",
+    template: "%s",
+  },
   description:
     "Paste a message, link, phone number, or screenshot and get an instant AI verdict on whether it's a scam.",
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    title: "ScamShield — Is it a scam?",
+    description:
+      "Paste a message, link, phone number, or screenshot and get an instant AI verdict on whether it's a scam.",
+    url: SITE_URL,
+  },
 };
 
 export default function RootLayout({
