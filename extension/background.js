@@ -1,14 +1,21 @@
-importScripts("config.js");
+// Keep in sync with config.js (which the popup uses).
+const SCAMSHIELD_API = "https://scamshield-roan.vercel.app";
 
 const MENU_ID = "scamshield-check";
 
-chrome.runtime.onInstalled.addListener(() => {
-  chrome.contextMenus.create({
-    id: MENU_ID,
-    title: 'Check "%s" with ScamShield',
-    contexts: ["selection"],
+function createMenu() {
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({
+      id: MENU_ID,
+      title: 'Check "%s" with ScamShield',
+      contexts: ["selection"],
+    });
   });
-});
+}
+
+// Create on install/update and on browser startup so the item is always present.
+chrome.runtime.onInstalled.addListener(createMenu);
+chrome.runtime.onStartup.addListener(createMenu);
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId !== MENU_ID || !tab?.id || !info.selectionText) return;
@@ -48,8 +55,10 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 function paint(tabId, payload) {
   return chrome.scripting
     .executeScript({ target: { tabId }, func: renderOverlay, args: [payload] })
-    .catch(() => {
-      // Some pages (e.g. chrome:// or the Web Store) block injection — ignore.
+    .catch((err) => {
+      // Some pages (e.g. chrome://, the Web Store, the new-tab page) block
+      // injection. Log it so it's visible in the service worker console.
+      console.warn("[ScamShield] could not show overlay on this page —", err);
     });
 }
 
@@ -60,8 +69,12 @@ function renderOverlay(payload) {
   if (!host) {
     host = document.createElement("div");
     host.id = HOST_ID;
-    host.style.cssText =
-      "position:fixed;top:16px;right:16px;z-index:2147483647;all:initial;";
+    // Set positioning with !important so page styles can't override or reset it.
+    host.style.setProperty("position", "fixed", "important");
+    host.style.setProperty("top", "16px", "important");
+    host.style.setProperty("right", "16px", "important");
+    host.style.setProperty("z-index", "2147483647", "important");
+    host.style.setProperty("margin", "0", "important");
     (document.documentElement || document.body).appendChild(host);
     host.attachShadow({ mode: "open" });
   }
