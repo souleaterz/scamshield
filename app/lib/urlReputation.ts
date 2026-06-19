@@ -116,11 +116,11 @@ async function domainAge(
   }
 }
 
-async function checkUrl(href: string): Promise<UrlCheck> {
+async function checkUrl(href: string, skipRdap = false): Promise<UrlCheck> {
   const url = new URL(href);
   const host = url.hostname.replace(/^www\./, "");
   const flags = heuristicFlags(url, host);
-  const { days, date } = await domainAge(host);
+  const { days, date } = skipRdap ? { days: null, date: null } : await domainAge(host);
 
   if (days !== null && days <= 30) {
     flags.unshift(`Domain registered very recently (${days} days ago)`);
@@ -186,11 +186,14 @@ async function safeBrowsingLookup(
 }
 
 /** Run reputation checks on up to 2 URLs found in the text. */
-export async function checkUrlsInText(text: string): Promise<UrlCheck[]> {
+export async function checkUrlsInText(
+  text: string,
+  options?: { skipRdap?: boolean },
+): Promise<UrlCheck[]> {
   const urls = extractUrls(text).slice(0, 2);
   if (urls.length === 0) return [];
   const [checks, sbMap] = await Promise.all([
-    Promise.all(urls.map((u) => checkUrl(u))),
+    Promise.all(urls.map((u) => checkUrl(u, options?.skipRdap ?? false))),
     safeBrowsingLookup(urls),
   ]);
   for (const c of checks) {

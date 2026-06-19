@@ -1,6 +1,43 @@
 // Keep in sync with config.js (which the popup uses).
 const SCAMSHIELD_API = "https://scamshield-roan.vercel.app";
 
+// In-memory cache for passive checks: domain → { result, expires }.
+// Service workers can restart, clearing this cache — that's fine, passive checks are cheap.
+const passiveCache = new Map();
+
+async function runPassiveCheck(url) {
+  let domain;
+  try { domain = new URL(url).hostname.replace(/^www\./, "").toLowerCase(); }
+  catch { return { riskLevel: "safe" }; }
+
+  const cached = passiveCache.get(domain);
+  if (cached && Date.now() < cached.expires) return cached.result;
+
+  try {
+    const res = await fetch(`${SCAMSHIELD_API}/api/passive-check`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url }),
+      credentials: "include",
+    });
+    const result = res.ok ? await res.json() : { riskLevel: "safe" };
+    passiveCache.set(domain, { result, expires: Date.now() + 3_600_000 }); // 1h
+    return result;
+  } catch {
+    return { riskLevel: "safe" };
+  }
+}
+
+// Content script asks the service worker to do the passive check (service workers
+// bypass CORS for hosts in host_permissions; content scripts don't).
+chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg.type !== "passiveCheck") return;
+  runPassiveCheck(msg.url)
+    .then(sendResponse)
+    .catch(() => sendResponse({ riskLevel: "safe" }));
+  return true; // keep the message channel open for async response
+});
+
 const MENU_ID = "scamshield-check";
 
 function createMenu() {
