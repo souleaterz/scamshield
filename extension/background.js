@@ -1,5 +1,5 @@
 // Keep in sync with config.js (which the popup uses).
-const SCAMSHIELD_API = "https://scamshield-roan.vercel.app";
+const GUARDURAI_API = "https://scamshield-roan.vercel.app";
 
 // In-memory cache for passive checks: domain → { result, expires }.
 // Service workers can restart, clearing this cache — that's fine, passive checks are cheap.
@@ -14,7 +14,7 @@ async function runPassiveCheck(url) {
   if (cached && Date.now() < cached.expires) return cached.result;
 
   try {
-    const res = await fetch(`${SCAMSHIELD_API}/api/passive-check`, {
+    const res = await fetch(`${GUARDURAI_API}/api/passive-check`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url }),
@@ -39,7 +39,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
 
   if (msg.type === "analyzeText") {
-    fetch(`${SCAMSHIELD_API}/api/analyze`, {
+    fetch(`${GUARDURAI_API}/api/analyze`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -60,13 +60,13 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
 });
 
-const MENU_ID = "scamshield-check";
+const MENU_ID = "guardurai-check";
 
 function createMenu() {
   chrome.contextMenus.removeAll(() => {
     chrome.contextMenus.create({
       id: MENU_ID,
-      title: 'Check "%s" with ScamShield',
+      title: 'Check "%s" with Guardurai',
       contexts: ["selection"],
     });
   });
@@ -81,13 +81,13 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   const tabId = tab.id;
   const text = info.selectionText;
 
-  await paint(tabId, { state: "loading", site: SCAMSHIELD_API });
+  await paint(tabId, { state: "loading", site: GUARDURAI_API });
 
   try {
-    const res = await fetch(`${SCAMSHIELD_API}/api/analyze`, {
+    const res = await fetch(`${GUARDURAI_API}/api/analyze`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      // Send ScamShield cookies so signed-in users get their plan (Pro/Unlimited);
+      // Send Guardurai cookies so signed-in users get their plan (Pro/Unlimited);
       // falls back to an anonymous free check if not signed in.
       credentials: "include",
       body: JSON.stringify({ text }),
@@ -95,21 +95,21 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     const data = await res.json().catch(() => ({}));
 
     if (res.status === 429) {
-      await paint(tabId, { state: "limit", site: SCAMSHIELD_API });
+      await paint(tabId, { state: "limit", site: GUARDURAI_API });
     } else if (!res.ok) {
       await paint(tabId, {
         state: "error",
-        site: SCAMSHIELD_API,
+        site: GUARDURAI_API,
         error: data?.error || "Something went wrong.",
       });
     } else {
-      await paint(tabId, { state: "result", site: SCAMSHIELD_API, verdict: data });
+      await paint(tabId, { state: "result", site: GUARDURAI_API, verdict: data });
     }
   } catch {
     await paint(tabId, {
       state: "error",
-      site: SCAMSHIELD_API,
-      error: "Couldn't reach ScamShield. Check your connection.",
+      site: GUARDURAI_API,
+      error: "Couldn't reach Guardurai. Check your connection.",
     });
   }
 });
@@ -120,13 +120,13 @@ function paint(tabId, payload) {
     .catch((err) => {
       // Some pages (e.g. chrome://, the Web Store, the new-tab page) block
       // injection. Log it so it's visible in the service worker console.
-      console.warn("[ScamShield] could not show overlay on this page —", err);
+      console.warn("[Guardurai] could not show overlay on this page —", err);
     });
 }
 
 // Runs in the page (isolated world). Must be fully self-contained.
 function renderOverlay(payload) {
-  const HOST_ID = "__scamshield_overlay_host__";
+  const HOST_ID = "__guardurai_overlay_host__";
   let host = document.getElementById(HOST_ID);
   if (!host) {
     host = document.createElement("div");
@@ -154,7 +154,7 @@ function renderOverlay(payload) {
   }
 
   const head = `<div class="row">
-      <strong style="font-size:14px;">🛡️ ScamShield</strong>
+      <strong style="font-size:14px;">🛡️ Guardurai</strong>
       <button class="close" aria-label="Close">×</button>
     </div>`;
 
@@ -191,7 +191,7 @@ function renderOverlay(payload) {
       <p class="summary">${esc(v.summary)}</p>
       <div class="meta">Confidence ${esc(v.confidence)}% · ${esc(v.detected_type)}</div>
       ${flags ? `<div class="h">Red flags</div>${flags}` : ""}
-      <div class="foot"><a href="${esc(fullUrl)}" target="_blank" rel="noreferrer">See full result on ScamShield →</a></div>`;
+      <div class="foot"><a href="${esc(fullUrl)}" target="_blank" rel="noreferrer">See full result on Guardurai →</a></div>`;
   }
 
   shadow.innerHTML = `<style>

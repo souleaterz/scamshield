@@ -1,6 +1,6 @@
 /** Canonical site URL, used for metadata, sitemap, robots, and JSON-LD. */
 export const SITE_URL = (
-  process.env.NEXT_PUBLIC_APP_URL || "https://scamshield.io"
+  process.env.NEXT_PUBLIC_APP_URL || "https://guardurai.dev"
 ).replace(/\/$/, "");
 
-export const SITE_NAME = "ScamShield";
+export const SITE_NAME = "Guardurai";

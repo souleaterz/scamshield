@@ -93,7 +93,7 @@ export function describeCommunityReports(matches: CommunityMatch[]): string {
         ? `FCA Warning List (${m.sourceLabel ?? "unauthorized firm"})`
         : m.source === "urlhaus"
           ? "URLhaus malware/phishing database"
-          : `${m.reportCount} ScamShield user report${m.reportCount !== 1 ? "s" : ""}`;
+          : `${m.reportCount} Guardurai user report${m.reportCount !== 1 ? "s" : ""}`;
     return `- ${m.inputValue} (${m.inputType}): flagged by ${who}`;
   });
   return `Community scam database matches — treat these as STRONG evidence of fraud:\n${lines.join("\n")}`;

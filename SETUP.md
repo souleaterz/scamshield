@@ -1,4 +1,4 @@
-# ScamShield — Phase 2 setup (auth + usage limits)
+# Guardurai — Phase 2 setup (auth + usage limits)
 
 Phase 2 adds optional accounts (Clerk) and a daily usage limit backed by Supabase.
 **Both are optional and degrade gracefully:** with neither configured, the app runs

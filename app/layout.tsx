@@ -19,7 +19,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "ScamShield — Is it a scam?",
+    default: "Guardurai — Is it a scam?",
     template: "%s",
   },
   description:
@@ -27,7 +27,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: SITE_NAME,
-    title: "ScamShield — Is it a scam?",
+    title: "Guardurai — Is it a scam?",
     description:
       "Paste a message, link, phone number, or screenshot and get an instant AI verdict on whether it's a scam.",
     url: SITE_URL,

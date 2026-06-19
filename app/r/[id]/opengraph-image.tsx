@@ -3,7 +3,7 @@ import { getSharedVerdict } from "@/app/lib/share";
 import type { RiskLevel } from "@/app/lib/scamAnalysis";
 
 export const runtime = "nodejs";
-export const alt = "ScamShield verdict";
+export const alt = "Guardurai verdict";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -21,7 +21,7 @@ export default async function Image({
   const verdict = await getSharedVerdict((await params).id);
   const r = (verdict && RISK[verdict.risk_level]) || RISK.suspicious;
   const confidence = verdict?.confidence ?? 0;
-  const rawSummary = verdict?.summary || "Check if it's a scam with ScamShield.";
+  const rawSummary = verdict?.summary || "Check if it's a scam with Guardurai.";
   const summary =
     rawSummary.length > 180 ? rawSummary.slice(0, 178) + "…" : rawSummary;
 
@@ -64,7 +64,7 @@ export default async function Image({
             </svg>
           </div>
           <div style={{ fontSize: 36, fontWeight: 700, color: "#0f172a" }}>
-            ScamShield
+            Guardurai
           </div>
         </div>
 
@@ -101,7 +101,7 @@ export default async function Image({
         </div>
 
         <div style={{ display: "flex", fontSize: 28, color: "#94a3b8" }}>
-          Check your own message free at ScamShield
+          Check your own message free at Guardurai
         </div>
       </div>
     ),

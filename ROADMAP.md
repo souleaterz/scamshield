@@ -1,6 +1,6 @@
-# ScamShield roadmap
+# Guardurai roadmap
 
-Goal: go from "AI reads your text and guesses" → **"ScamShield cross-checks hard
+Goal: go from "AI reads your text and guesses" → **"Guardurai cross-checks hard
 signals across identity, links, money, and phones"** — the thing that makes it the
 go-to scam checker.
 
@@ -56,7 +56,7 @@ Legend: ✅ done · 🚧 partial · ⬜ planned
 
 ## ⬜ Platform plays (longer term)
 
-- [ ] **Public API / B2B** — let banks, marketplaces, dating apps embed ScamShield checks
+- [ ] **Public API / B2B** — let banks, marketplaces, dating apps embed Guardurai checks
 - [ ] **Mobile app** — call/SMS screening where scams actually land
 - [ ] **Multi-language support**
 

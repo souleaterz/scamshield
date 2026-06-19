@@ -1,5 +1,5 @@
-// ScamShield Gmail integration
-// Runs on mail.google.com — detects open emails, injects a "Check with ScamShield"
+// Guardurai Gmail integration
+// Runs on mail.google.com — detects open emails, injects a "Check with Guardurai"
 // button, extracts body + sender, and shows an inline verdict panel.
 
 (function () {
@@ -157,7 +157,7 @@
       btn.innerHTML = "🛡️ Check email";
 
       if (chrome.runtime.lastError || !resp) {
-        panel.innerHTML = renderMsg("Couldn't reach ScamShield. Check your connection.");
+        panel.innerHTML = renderMsg("Couldn't reach Guardurai. Check your connection.");
       } else if (resp.limitReached) {
         panel.innerHTML = renderMsg(
           'You\'ve used today\'s free check. <a href="https://scamshield-roan.vercel.app" target="_blank" rel="noreferrer">Upgrade →</a>',
@@ -192,7 +192,7 @@
       <p class="summary">${esc(v.summary)}</p>
       <div class="meta">Confidence ${esc(v.confidence)}% · ${esc(v.detected_type)}</div>
       ${flags ? `<div class="h">Red flags</div>${flags}` : ""}
-      <div class="foot"><a href="${esc(url)}" target="_blank" rel="noreferrer">See full result on ScamShield →</a></div>`;
+      <div class="foot"><a href="${esc(url)}" target="_blank" rel="noreferrer">See full result on Guardurai →</a></div>`;
   }
 
   function renderMsg(msg, isHtml = false) {

@@ -153,7 +153,7 @@ async function safeBrowsingLookup(
         signal: controller.signal,
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          client: { clientId: "scamshield", clientVersion: "1.0" },
+          client: { clientId: "guardurai", clientVersion: "1.0" },
           threatInfo: {
             threatTypes: [
               "MALWARE",

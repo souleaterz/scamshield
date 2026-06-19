@@ -14,7 +14,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const guide = getGuide((await params).slug);
-  if (!guide) return { title: "Scam guide not found | ScamShield" };
+  if (!guide) return { title: "Scam guide not found | Guardurai" };
 
   const url = `${SITE_URL}/scams/${guide.slug}`;
   return {
@@ -146,7 +146,7 @@ export default async function ScamGuidePage({
           Not sure about a message you&apos;ve received?
         </h2>
         <p className="mx-auto mt-2 max-w-md text-sm text-slate-600">
-          Paste it into ScamShield and get an instant verdict on whether
+          Paste it into Guardurai and get an instant verdict on whether
           it&apos;s a scam.
         </p>
         <Link

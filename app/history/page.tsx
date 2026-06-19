@@ -5,7 +5,7 @@ import { getSupabaseAdmin } from "@/app/lib/supabase";
 import type { HistoryItem } from "@/app/api/history/route";
 import HistoryList from "./HistoryList";
 
-export const metadata = { title: "Check history — ScamShield" };
+export const metadata = { title: "Check history — Guardurai" };
 
 export default async function HistoryPage() {
   const userId = await getUserId();

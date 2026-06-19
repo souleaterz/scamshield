@@ -35,7 +35,7 @@ export async function POST(request: Request) {
         ? "FCA Warning List"
         : m.source === "urlhaus"
           ? "URLhaus malware database"
-          : `${m.reportCount} ScamShield user report${m.reportCount !== 1 ? "s" : ""}`;
+          : `${m.reportCount} Guardurai user report${m.reportCount !== 1 ? "s" : ""}`;
     flags.push(`Flagged by ${who}`);
   }
 

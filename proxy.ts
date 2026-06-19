@@ -1,7 +1,7 @@
 import { clerkMiddleware } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
-// Auth is optional in ScamShield. When Clerk isn't configured yet, fall back to
+// Auth is optional in Guardurai. When Clerk isn't configured yet, fall back to
 // a pass-through middleware so the app runs normally (anonymous, IP-limited).
 const clerkEnabled =
   Boolean(process.env.CLERK_SECRET_KEY) &&

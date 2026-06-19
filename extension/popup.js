@@ -44,9 +44,9 @@ function show(html) {
 
 function fullResultUrl(verdict) {
   try {
-    return `${SCAMSHIELD_API}/#r=${encodeURIComponent(JSON.stringify(verdict))}`;
+    return `${GUARDURAI_API}/#r=${encodeURIComponent(JSON.stringify(verdict))}`;
   } catch {
-    return SCAMSHIELD_API;
+    return GUARDURAI_API;
   }
 }
 
@@ -77,7 +77,7 @@ async function scanPage() {
     const dataUrl = await chrome.tabs.captureVisibleTab({ format: "png" });
     const base64 = (dataUrl || "").split(",")[1];
     if (!base64) throw new Error("capture failed");
-    const res = await fetch(`${SCAMSHIELD_API}/api/analyze`, {
+    const res = await fetch(`${GUARDURAI_API}/api/analyze`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -87,7 +87,7 @@ async function scanPage() {
     if (res.status === 429) {
       show(
         `<span class="r-muted">You've used today's free check. ` +
-          `<a class="r-link" href="${esc(SCAMSHIELD_API)}" target="_blank" rel="noreferrer">Upgrade</a> for more.</span>`,
+          `<a class="r-link" href="${esc(GUARDURAI_API)}" target="_blank" rel="noreferrer">Upgrade</a> for more.</span>`,
       );
     } else if (!res.ok) {
       show(`<span class="r-muted">${esc(data?.error || "Something went wrong.")}</span>`);
@@ -108,7 +108,7 @@ shotBtn.addEventListener("click", scanPage);
 
 async function checkAuth() {
   try {
-    const res = await fetch(`${SCAMSHIELD_API}/api/me`, {
+    const res = await fetch(`${GUARDURAI_API}/api/me`, {
       credentials: "include",
       cache: "no-store",
     });
@@ -122,7 +122,7 @@ async function checkAuth() {
       authBtn.textContent = "Sign in";
       authBtn.style.display = "";
       authBtn.onclick = () => {
-        chrome.tabs.create({ url: `${SCAMSHIELD_API}/sign-in` });
+        chrome.tabs.create({ url: `${GUARDURAI_API}/sign-in` });
         window.close();
       };
     }

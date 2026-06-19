@@ -65,8 +65,8 @@
     const border = isScam ? "#991b1b" : "#92400e";
     const icon = isScam ? "🚨" : "⚠️";
     const title = isScam
-      ? "ScamShield: This site has been flagged as a scam"
-      : "ScamShield: This site shows suspicious signs";
+      ? "Guardurai: This site has been flagged as a scam"
+      : "Guardurai: This site shows suspicious signs";
 
     const topFlag = result.flags?.[0] ?? "";
 

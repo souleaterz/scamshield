@@ -45,7 +45,7 @@ export interface Verdict {
   risk_level: RiskLevel;
   /** Confidence in the verdict, 0–100. */
   confidence: number;
-  /** What ScamShield judged the content to be, e.g. "SMS message", "URL". */
+  /** What Guardurai judged the content to be, e.g. "SMS message", "URL". */
   detected_type: string;
   /** One-sentence plain-English summary of the verdict. */
   summary: string;
@@ -92,7 +92,7 @@ const MODELS: Record<Tier, string> = {
   unlimited: "claude-sonnet-4-6",
 };
 
-const SYSTEM_PROMPT = `You are ScamShield, an expert fraud and scam detection analyst. \
+const SYSTEM_PROMPT = `You are Guardurai, an expert fraud and scam detection analyst. \
 Users paste or upload anything they're unsure about — a text message, an email, a \
 phone number, a URL, or a screenshot — and you assess whether it is a scam.
 

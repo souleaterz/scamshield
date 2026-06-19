@@ -4,7 +4,7 @@ import { SCAM_GUIDES } from "@/app/lib/scamGuides";
 import { SITE_URL } from "@/app/lib/site";
 
 export const metadata: Metadata = {
-  title: "Common Scams: How to Spot and Avoid Them | ScamShield",
+  title: "Common Scams: How to Spot and Avoid Them | Guardurai",
   description:
     "Plain-English guides to the most common UK scams — fake delivery texts, HMRC refunds, 'Hi Mum' messages, bank impersonation and more. Learn the warning signs.",
   alternates: { canonical: `${SITE_URL}/scams` },
@@ -28,7 +28,7 @@ export default function ScamsIndexPage() {
           Each one explains how it works, the warning signs, and what to do.
           Unsure about a specific message?{" "}
           <Link href="/" className="font-medium text-blue-600 hover:text-blue-700">
-            Check it with ScamShield
+            Check it with Guardurai
           </Link>
           .
         </p>

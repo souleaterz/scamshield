@@ -38,10 +38,10 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const verdict = await getSharedVerdict((await params).id);
-  if (!verdict) return { title: "Verdict not found | ScamShield" };
+  if (!verdict) return { title: "Verdict not found | Guardurai" };
 
   const label = RISK[verdict.risk_level]?.label ?? "Verdict";
-  const title = `ScamShield: ${label} (${verdict.confidence}% confidence)`;
+  const title = `Guardurai: ${label} (${verdict.confidence}% confidence)`;
   return {
     title,
     description: verdict.summary,
@@ -77,7 +77,7 @@ export default async function SharedVerdictPage({
             </div>
             <div>
               <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                ScamShield verdict
+                Guardurai verdict
               </div>
               <div className={`text-2xl font-bold ${r.text}`}>{r.label}</div>
             </div>
@@ -108,7 +108,7 @@ export default async function SharedVerdictPage({
           Got a suspicious message of your own?
         </h1>
         <p className="mx-auto mt-2 max-w-md text-sm text-slate-600">
-          Paste any text, link, phone number, or screenshot into ScamShield and
+          Paste any text, link, phone number, or screenshot into Guardurai and
           get an instant verdict — free.
         </p>
         <Link
@@ -120,7 +120,7 @@ export default async function SharedVerdictPage({
       </div>
 
       <p className="text-center text-xs text-slate-400">
-        Shared from ScamShield · guidance, not a guarantee.
+        Shared from Guardurai · guidance, not a guarantee.
       </p>
     </main>
   );

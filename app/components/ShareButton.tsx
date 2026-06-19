@@ -27,7 +27,7 @@ export default function ShareButton({ verdict }: { verdict: Verdict }) {
       if (navigator.share) {
         try {
           await navigator.share({
-            title: "ScamShield verdict",
+            title: "Guardurai verdict",
             text: verdict.summary,
             url: data.url,
           });

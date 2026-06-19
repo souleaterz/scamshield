@@ -20,7 +20,7 @@ export default async function Home({
             🛡️
           </span>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-            ScamShield
+            Guardurai
           </h1>
         </div>
         <p className="mt-2 text-slate-600">
@@ -46,7 +46,7 @@ export default async function Home({
           </Link>
         </p>
         <p>
-          ScamShield gives guidance, not a guarantee. When in doubt, contact the
+          Guardurai gives guidance, not a guarantee. When in doubt, contact the
           organisation directly using details you trust.
         </p>
       </footer>
