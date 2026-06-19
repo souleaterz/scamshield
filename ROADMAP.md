@@ -39,7 +39,7 @@ Turn subjective AI guesses into verifiable checks. Most need a third-party API +
       risky TLDs, punycode, brand impersonation) fed into the verdict and shown in the card
   - [x] **Google Safe Browsing** — batched Lookup API v4, threat badges in card, CONFIRMED MALICIOUS in Claude prompt
   - [ ] Optional: urlscan.io / VirusTotal enrichment
-- [ ] **Phone number intelligence** — format/carrier lookup + known-scam reputation
+- [x] **Phone number intelligence** — libphonenumber-js parse/validate, line-type heuristics (premium-rate, VoIP, personal numbers), optional AbstractAPI carrier lookup; findings fed to Claude + shown in verdict card
 - [ ] **Email authenticity** — parse pasted headers for SPF/DKIM/DMARC + spoofing
 - [ ] **Crypto address check** — match wallet addresses against scam-report databases
 

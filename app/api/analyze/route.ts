@@ -9,6 +9,7 @@ import { getUserId, getClientIp } from "@/app/lib/auth";
 import { checkRateLimit, recordCheck } from "@/app/lib/rateLimit";
 import { getTierForUser } from "@/app/lib/subscription";
 import { checkUrlsInText, describeChecks } from "@/app/lib/urlReputation";
+import { checkPhonesInText, describePhoneChecks } from "@/app/lib/phoneReputation";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -94,14 +95,21 @@ export async function POST(request: Request) {
       );
     }
 
-    // Hard-signal link reputation (domain age + heuristics) feeds the verdict.
-    const linkChecks = trimmedText ? await checkUrlsInText(trimmedText) : [];
+    // Hard-signal checks (links + phones) run in parallel before the Claude call.
+    const [linkChecks, phoneChecks] = await Promise.all([
+      trimmedText ? checkUrlsInText(trimmedText) : Promise.resolve([]),
+      trimmedText ? checkPhonesInText(trimmedText) : Promise.resolve([]),
+    ]);
+
+    const hardSignals = [describeChecks(linkChecks), describePhoneChecks(phoneChecks)]
+      .filter(Boolean)
+      .join("\n\n");
 
     const verdict = await analyzeContent({
       text: trimmedText || undefined,
       image: validatedImage,
       tier,
-      linkContext: describeChecks(linkChecks),
+      linkContext: hardSignals || undefined,
     });
 
     // Best-effort: records usage for the daily limit + future history.
@@ -114,7 +122,7 @@ export async function POST(request: Request) {
       summary: verdict.summary,
     });
 
-    return NextResponse.json({ ...verdict, link_checks: linkChecks });
+    return NextResponse.json({ ...verdict, link_checks: linkChecks, phone_checks: phoneChecks });
   } catch (err) {
     if (err instanceof Error && err.message.includes("ANTHROPIC_API_KEY")) {
       return NextResponse.json(

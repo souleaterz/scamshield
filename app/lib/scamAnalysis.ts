@@ -19,6 +19,23 @@ export interface UrlCheck {
   safeBrowsingThreats?: string[];
 }
 
+export interface PhoneCheck {
+  /** Raw text as found in the input. */
+  raw: string;
+  /** E.164 normalised number, e.g. "+447911123456". */
+  e164: string;
+  /** Human-readable formatted number. */
+  display: string;
+  valid: boolean;
+  countryCode: string | null;
+  countryName: string | null;
+  /** Line type: "Mobile", "VoIP", "Premium rate", etc. */
+  lineType: string | null;
+  /** Carrier name from AbstractAPI (if key set). */
+  carrier: string | null;
+  flags: string[];
+}
+
 export interface Verdict {
   /** Overall risk classification. */
   risk_level: RiskLevel;
@@ -36,6 +53,8 @@ export interface Verdict {
   advice: string[];
   /** Hard-signal link reputation checks, added by the API (not the model). */
   link_checks?: UrlCheck[];
+  /** Hard-signal phone reputation checks, added by the API (not the model). */
+  phone_checks?: PhoneCheck[];
 }
 
 /** Subscription tier — drives which model handles the check. */

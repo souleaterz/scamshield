@@ -1,4 +1,4 @@
-import type { Verdict, RiskLevel } from "@/app/lib/scamAnalysis";
+import type { Verdict, RiskLevel, PhoneCheck } from "@/app/lib/scamAnalysis";
 
 const RISK: Record<
   RiskLevel,
@@ -164,6 +164,58 @@ export default function VerdictCard({ verdict }: { verdict: Verdict }) {
                   ) : (
                     <p className="mt-1 text-sm text-slate-500">
                       No automated red flags on this domain.
+                    </p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {verdict.phone_checks && verdict.phone_checks.length > 0 && (
+          <section className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <h3 className="text-sm font-semibold text-slate-900">📞 Phone checks</h3>
+            <ul className="mt-2.5 space-y-3">
+              {verdict.phone_checks.map((c: PhoneCheck, i: number) => (
+                <li key={i}>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-mono text-sm text-slate-800">
+                      {c.display ?? c.raw}
+                    </span>
+                    {c.lineType && (
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                          c.lineType === "Premium rate" || c.lineType === "VoIP"
+                            ? "bg-red-100 text-red-700"
+                            : c.lineType === "Personal number" || c.lineType === "Shared cost"
+                              ? "bg-amber-100 text-amber-700"
+                              : "bg-slate-100 text-slate-600"
+                        }`}
+                      >
+                        {c.lineType}
+                      </span>
+                    )}
+                    {c.carrier && (
+                      <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
+                        {c.carrier}
+                      </span>
+                    )}
+                    {c.countryName && (
+                      <span className="text-xs text-slate-400">{c.countryName}</span>
+                    )}
+                  </div>
+                  {c.flags.length > 0 ? (
+                    <ul className="mt-1.5 space-y-1">
+                      {c.flags.map((f, j) => (
+                        <li key={j} className="flex gap-2 text-sm text-slate-600">
+                          <span aria-hidden className="text-amber-500">⚠</span>
+                          <span>{f}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-1 text-sm text-slate-500">
+                      No automated red flags on this number.
                     </p>
                   )}
                 </li>
