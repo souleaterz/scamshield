@@ -135,6 +135,18 @@ export default function VerdictCard({ verdict }: { verdict: Verdict }) {
                       </span>
                     )}
                   </div>
+                  {c.safeBrowsingThreats && c.safeBrowsingThreats.length > 0 && (
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {c.safeBrowsingThreats.map((t, j) => (
+                        <span
+                          key={j}
+                          className="rounded-full bg-red-600 px-2 py-0.5 text-xs font-semibold text-white"
+                        >
+                          🛡 {t.replace(/_/g, " ")}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   {c.flags.length > 0 ? (
                     <ul className="mt-1.5 space-y-1">
                       {c.flags.map((f, j) => (

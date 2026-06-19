@@ -137,11 +137,67 @@ async function checkUrl(href: string): Promise<UrlCheck> {
   };
 }
 
+/** Batch-query Google Safe Browsing for a list of URLs. Returns a map of url → threat types. */
+async function safeBrowsingLookup(
+  urls: string[],
+): Promise<Map<string, string[]>> {
+  const key = process.env.GOOGLE_SAFE_BROWSING_KEY;
+  if (!key || urls.length === 0) return new Map();
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(
+      `https://safebrowsing.googleapis.com/v4/threatMatches:find?key=${key}`,
+      {
+        method: "POST",
+        signal: controller.signal,
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          client: { clientId: "scamshield", clientVersion: "1.0" },
+          threatInfo: {
+            threatTypes: [
+              "MALWARE",
+              "SOCIAL_ENGINEERING",
+              "UNWANTED_SOFTWARE",
+              "POTENTIALLY_HARMFUL_APPLICATION",
+            ],
+            platformTypes: ["ANY_PLATFORM"],
+            threatEntryTypes: ["URL"],
+            threatEntries: urls.map((u) => ({ url: u })),
+          },
+        }),
+      },
+    );
+    clearTimeout(timer);
+    if (!res.ok) return new Map();
+    const data = (await res.json()) as {
+      matches?: { threatType: string; threat: { url: string } }[];
+    };
+    const map = new Map<string, string[]>();
+    for (const m of data.matches ?? []) {
+      const existing = map.get(m.threat.url) ?? [];
+      existing.push(m.threatType);
+      map.set(m.threat.url, existing);
+    }
+    return map;
+  } catch {
+    return new Map();
+  }
+}
+
 /** Run reputation checks on up to 2 URLs found in the text. */
 export async function checkUrlsInText(text: string): Promise<UrlCheck[]> {
   const urls = extractUrls(text).slice(0, 2);
   if (urls.length === 0) return [];
-  return Promise.all(urls.map((u) => checkUrl(u)));
+  const [checks, sbMap] = await Promise.all([
+    Promise.all(urls.map((u) => checkUrl(u))),
+    safeBrowsingLookup(urls),
+  ]);
+  for (const c of checks) {
+    const threats = sbMap.get(c.url);
+    if (threats && threats.length > 0) c.safeBrowsingThreats = threats;
+  }
+  return checks;
 }
 
 /** A compact, factual summary of the checks to feed into the model prompt. */
@@ -152,8 +208,16 @@ export function describeChecks(checks: UrlCheck[]): string {
       c.domainAgeDays === null
         ? "registration date unknown"
         : `${c.domainAgeDays} days old (registered ${c.registeredOn})`;
-    const signals = c.flags.length ? c.flags.join("; ") : "no automated signals";
-    return `- ${c.url} → domain ${c.host}: ${age}; signals: ${signals}`;
+    const sb =
+      c.safeBrowsingThreats && c.safeBrowsingThreats.length > 0
+        ? `CONFIRMED MALICIOUS by Google Safe Browsing (${c.safeBrowsingThreats.join(", ")})`
+        : null;
+    const signals = [
+      ...(sb ? [sb] : []),
+      ...c.flags,
+    ];
+    const signalText = signals.length ? signals.join("; ") : "no automated signals";
+    return `- ${c.url} → domain ${c.host}: ${age}; signals: ${signalText}`;
   });
   return `Automated link checks (factual signals — weigh these in your verdict):\n${lines.join("\n")}`;
 }

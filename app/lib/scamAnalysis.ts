@@ -15,6 +15,8 @@ export interface UrlCheck {
   domainAgeDays: number | null;
   registeredOn: string | null;
   flags: string[];
+  /** Threat types returned by Google Safe Browsing, e.g. ["MALWARE", "SOCIAL_ENGINEERING"]. */
+  safeBrowsingThreats?: string[];
 }
 
 export interface Verdict {
