@@ -1,108 +1,142 @@
 import type { Verdict, RiskLevel } from "@/app/lib/scamAnalysis";
 
-const RISK_STYLES: Record<
+const RISK: Record<
   RiskLevel,
-  { label: string; badge: string; bar: string; ring: string }
+  {
+    label: string;
+    icon: string;
+    banner: string;
+    chip: string;
+    label_text: string;
+    bar: string;
+  }
 > = {
   safe: {
     label: "Safe",
-    badge: "bg-emerald-100 text-emerald-800",
+    icon: "✓",
+    banner: "from-emerald-50",
+    chip: "bg-emerald-500",
+    label_text: "text-emerald-700",
     bar: "bg-emerald-500",
-    ring: "border-emerald-200",
   },
   suspicious: {
     label: "Suspicious",
-    badge: "bg-amber-100 text-amber-800",
+    icon: "!",
+    banner: "from-amber-50",
+    chip: "bg-amber-500",
+    label_text: "text-amber-700",
     bar: "bg-amber-500",
-    ring: "border-amber-200",
   },
   likely_scam: {
     label: "Likely Scam",
-    badge: "bg-red-100 text-red-800",
+    icon: "✕",
+    banner: "from-red-50",
+    chip: "bg-red-500",
+    label_text: "text-red-700",
     bar: "bg-red-500",
-    ring: "border-red-200",
   },
 };
 
 export default function VerdictCard({ verdict }: { verdict: Verdict }) {
-  const style = RISK_STYLES[verdict.risk_level];
+  const r = RISK[verdict.risk_level] ?? RISK.suspicious;
+  const confidence = Math.min(100, Math.max(0, verdict.confidence || 0));
 
   return (
-    <div
-      className={`w-full rounded-2xl border bg-white p-6 shadow-sm sm:p-8 ${style.ring}`}
-    >
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <span
-          className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold ${style.badge}`}
-        >
-          {style.label}
-        </span>
-        <span className="text-sm text-slate-500">
-          {verdict.detected_type}
-        </span>
-      </div>
-
-      <p className="mt-4 text-lg font-medium text-slate-900">
-        {verdict.summary}
-      </p>
-
-      <div className="mt-5">
-        <div className="flex items-center justify-between text-sm text-slate-500">
-          <span>Confidence</span>
-          <span className="font-medium text-slate-700">
-            {verdict.confidence}%
-          </span>
-        </div>
-        <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-slate-100">
+    <div className="w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      {/* Banner */}
+      <div className={`bg-gradient-to-br ${r.banner} to-white p-6`}>
+        <div className="flex items-center gap-4">
           <div
-            className={`h-full rounded-full ${style.bar}`}
-            style={{ width: `${Math.min(100, Math.max(0, verdict.confidence))}%` }}
+            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-2xl font-bold text-white ${r.chip}`}
+          >
+            {r.icon}
+          </div>
+          <div className="min-w-0">
+            <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+              Verdict
+            </div>
+            <div className={`text-2xl font-bold ${r.label_text}`}>
+              {r.label}
+            </div>
+          </div>
+          <div className="ml-auto shrink-0 text-right">
+            <div className="text-xs font-medium text-slate-400">Confidence</div>
+            <div className="text-2xl font-bold text-slate-900">
+              {confidence}%
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-white/70">
+          <div
+            className={`h-full rounded-full ${r.bar}`}
+            style={{ width: `${confidence}%` }}
           />
         </div>
       </div>
 
-      {verdict.red_flags.length > 0 && (
-        <section className="mt-6">
-          <h3 className="text-sm font-semibold text-slate-900">Red flags</h3>
-          <ul className="mt-2 space-y-1.5">
-            {verdict.red_flags.map((flag, i) => (
-              <li key={i} className="flex gap-2 text-sm text-slate-700">
-                <span aria-hidden className="text-red-500">
-                  •
-                </span>
-                <span>{flag}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      {/* Body */}
+      <div className="space-y-6 p-6">
+        <div>
+          {verdict.detected_type && (
+            <span className="inline-block rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-500">
+              {verdict.detected_type}
+            </span>
+          )}
+          <p className="mt-3 text-lg font-medium leading-snug text-slate-900">
+            {verdict.summary}
+          </p>
+        </div>
 
-      <section className="mt-6">
-        <h3 className="text-sm font-semibold text-slate-900">
-          What this means
-        </h3>
-        <p className="mt-2 text-sm leading-relaxed text-slate-700">
-          {verdict.explanation}
-        </p>
-      </section>
+        {verdict.red_flags.length > 0 && (
+          <section className="rounded-xl border border-red-100 bg-red-50/60 p-4">
+            <h3 className="text-sm font-semibold text-red-900">
+              🚩 Red flags ({verdict.red_flags.length})
+            </h3>
+            <ul className="mt-2.5 space-y-2">
+              {verdict.red_flags.map((flag, i) => (
+                <li key={i} className="flex gap-2.5 text-sm text-slate-700">
+                  <span
+                    aria-hidden
+                    className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white"
+                  >
+                    !
+                  </span>
+                  <span>{flag}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
-      {verdict.advice.length > 0 && (
-        <section className="mt-6">
-          <h3 className="text-sm font-semibold text-slate-900">
-            What to do next
-          </h3>
-          <ul className="mt-2 space-y-1.5">
-            {verdict.advice.map((tip, i) => (
-              <li key={i} className="flex gap-2 text-sm text-slate-700">
-                <span aria-hidden className="text-blue-500">
-                  →
-                </span>
-                <span>{tip}</span>
-              </li>
-            ))}
-          </ul>
+        <section>
+          <h3 className="text-sm font-semibold text-slate-900">What this means</h3>
+          <p className="mt-1.5 text-sm leading-relaxed text-slate-600">
+            {verdict.explanation}
+          </p>
         </section>
-      )}
+
+        {verdict.advice.length > 0 && (
+          <section className="rounded-xl border border-blue-100 bg-blue-50/60 p-4">
+            <h3 className="text-sm font-semibold text-blue-900">
+              What to do next
+            </h3>
+            <ul className="mt-2.5 space-y-2">
+              {verdict.advice.map((tip, i) => (
+                <li key={i} className="flex gap-2.5 text-sm text-slate-700">
+                  <span
+                    aria-hidden
+                    className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-blue-500 text-[10px] font-bold text-white"
+                  >
+                    ✓
+                  </span>
+                  <span>{tip}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+      </div>
     </div>
   );
 }

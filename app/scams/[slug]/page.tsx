@@ -146,7 +146,7 @@ export default async function ScamGuidePage({
           Not sure about a message you&apos;ve received?
         </h2>
         <p className="mx-auto mt-2 max-w-md text-sm text-slate-600">
-          Paste it into ScamShield and get an instant AI verdict on whether
+          Paste it into ScamShield and get an instant verdict on whether
           it&apos;s a scam.
         </p>
         <Link

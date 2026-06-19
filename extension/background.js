@@ -117,6 +117,14 @@ function renderOverlay(payload) {
           .map((f) => `<div class="li"><span class="dot">•</span><span>${esc(f)}</span></div>`)
           .join("")
       : "";
+    // Carry the full verdict to the site via the URL hash so it can show the
+    // complete result without re-running (and re-charging) the check.
+    let fullUrl = payload.site;
+    try {
+      fullUrl = `${payload.site}/#r=${encodeURIComponent(JSON.stringify(v))}`;
+    } catch {
+      fullUrl = payload.site;
+    }
     body = `<div class="row">
         <span class="badge" style="background:${color};">${esc(label)}</span>
         <button class="close" aria-label="Close">×</button>
@@ -124,7 +132,7 @@ function renderOverlay(payload) {
       <p class="summary">${esc(v.summary)}</p>
       <div class="meta">Confidence ${esc(v.confidence)}% · ${esc(v.detected_type)}</div>
       ${flags ? `<div class="h">Red flags</div>${flags}` : ""}
-      <div class="foot"><a href="${esc(payload.site)}" target="_blank" rel="noreferrer">Open full result on ScamShield →</a></div>`;
+      <div class="foot"><a href="${esc(fullUrl)}" target="_blank" rel="noreferrer">See full result on ScamShield →</a></div>`;
   }
 
   shadow.innerHTML = `<style>

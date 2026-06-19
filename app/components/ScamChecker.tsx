@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Verdict, ImageMediaType, Tier } from "@/app/lib/scamAnalysis";
 import VerdictCard from "@/app/components/VerdictCard";
 import PricingPlans from "@/app/components/PricingPlans";
@@ -64,6 +64,29 @@ export default function ScamChecker({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const showAds = tier === "free";
+
+  // Show a full verdict passed in via the URL hash (e.g. "Open full result"
+  // from the browser extension), without re-running the check.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const match = window.location.hash.match(/(?:^#|&)r=([^&]+)/);
+    if (!match) return;
+    try {
+      const parsed = JSON.parse(decodeURIComponent(match[1]));
+      if (parsed && typeof parsed === "object" && parsed.risk_level) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- hash is only readable on the client, after mount
+        setVerdict(parsed as Verdict);
+      }
+    } catch {
+      /* malformed hash — ignore */
+    }
+    // Tidy the URL so a refresh doesn't re-trigger it.
+    window.history.replaceState(
+      null,
+      "",
+      window.location.pathname + window.location.search,
+    );
+  }, []);
 
   const handleFiles = useCallback(async (files: FileList | null) => {
     if (!files || files.length === 0) return;
