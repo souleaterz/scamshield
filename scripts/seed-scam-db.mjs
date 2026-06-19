@@ -18,6 +18,7 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
+import ws from "ws";
 import { readFileSync, existsSync } from "fs";
 import { resolve } from "path";
 
@@ -47,7 +48,9 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
   process.exit(1);
 }
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+  realtime: { transport: ws },
+});
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -93,16 +96,26 @@ async function fetchText(url) {
 
 async function seedFca() {
   console.log("\n=== FCA Warning List ===");
-  const CSV_URL =
-    "https://www.fca.org.uk/publication/data/warning-list-of-firms.csv";
+  // The FCA moved their warning list. Try both known URLs.
+  const CSV_URLS = [
+    "https://www.fca.org.uk/publication/data/warning-list-of-firms.csv",
+    "https://www.fca.org.uk/publication/data/ScamSmart-Warnings.csv",
+  ];
 
   let csv;
-  try {
-    csv = await fetchText(CSV_URL);
-  } catch (e) {
-    console.warn(`  Could not fetch FCA CSV: ${e.message}`);
-    console.warn("  Download it manually from https://www.fca.org.uk/consumers/protect-yourself");
-    console.warn("  and re-run with the file path as an argument (feature coming soon).");
+  for (const url of CSV_URLS) {
+    try {
+      csv = await fetchText(url);
+      break;
+    } catch {
+      // try next
+    }
+  }
+
+  if (!csv) {
+    console.warn("  Could not fetch FCA Warning List automatically.");
+    console.warn("  Download the CSV from: https://www.fca.org.uk/consumers/protect-yourself");
+    console.warn("  Then run: node scripts/seed-scam-db.mjs --fca-file=/path/to/warning-list.csv");
     return;
   }
 
