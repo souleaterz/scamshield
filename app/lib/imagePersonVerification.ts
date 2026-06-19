@@ -73,9 +73,9 @@ const AI_GENERATOR_DOMAINS = [
 
 export async function reverseImageSearch(
   base64: string,
-): Promise<ReverseImageResult | null> {
+): Promise<{ data: ReverseImageResult | null; error: string | null }> {
   const key = process.env.GOOGLE_CLOUD_VISION_KEY;
-  if (!key) return null;
+  if (!key) return { data: null, error: "GOOGLE_CLOUD_VISION_KEY not set" };
 
   try {
     const res = await fetch(
@@ -97,13 +97,14 @@ export async function reverseImageSearch(
 
     if (!res.ok) {
       const errBody = await res.text().catch(() => "");
-      console.error(`[Vision] HTTP ${res.status}:`, errBody.slice(0, 300));
-      return null;
+      const msg = `Vision HTTP ${res.status}: ${errBody.slice(0, 200)}`;
+      console.error("[Vision]", msg);
+      return { data: null, error: msg };
     }
     const data = (await res.json()) as Record<string, unknown>;
     const responses = data.responses as Array<Record<string, unknown>>;
     const wd = responses?.[0]?.webDetection as Record<string, unknown> | undefined;
-    if (!wd) return null;
+    if (!wd) return { data: null, error: "Vision returned no webDetection" };
 
     const pages = (wd.pagesWithMatchingImages as Array<Record<string, string>>) ?? [];
     const fullMatches = (wd.fullMatchingImages as Array<Record<string, string>>) ?? [];
@@ -171,26 +172,30 @@ export async function reverseImageSearch(
     }
 
     return {
-      matchCount: pages.length,
-      exactMatchCount: fullMatches.length,
-      topMatches,
-      webEntities,
-      bestGuessLabel,
-      flags,
+      data: {
+        matchCount: pages.length,
+        exactMatchCount: fullMatches.length,
+        topMatches,
+        webEntities,
+        bestGuessLabel,
+        flags,
+      },
+      error: null,
     };
   } catch (err) {
-    console.error("[Vision] fetch error:", err);
-    return null;
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[Vision] fetch error:", msg);
+    return { data: null, error: `Vision fetch threw: ${msg}` };
   }
 }
 
 export async function aiGeneratedCheck(
   base64: string,
   mimeType: string,
-): Promise<AiDetectionResult | null> {
+): Promise<{ data: AiDetectionResult | null; error: string | null }> {
   const apiUser = process.env.SIGHTENGINE_USER;
   const apiSecret = process.env.SIGHTENGINE_SECRET;
-  if (!apiUser || !apiSecret) return null;
+  if (!apiUser || !apiSecret) return { data: null, error: "SIGHTENGINE_USER or SIGHTENGINE_SECRET not set" };
 
   try {
     const buffer = Buffer.from(base64, "base64");
@@ -209,8 +214,9 @@ export async function aiGeneratedCheck(
 
     if (!res.ok) {
       const errBody = await res.text().catch(() => "");
-      console.error(`[Sightengine] HTTP ${res.status}:`, errBody.slice(0, 300));
-      return null;
+      const msg = `Sightengine HTTP ${res.status}: ${errBody.slice(0, 200)}`;
+      console.error("[Sightengine]", msg);
+      return { data: null, error: msg };
     }
     const data = (await res.json()) as {
       status: string;
@@ -218,8 +224,9 @@ export async function aiGeneratedCheck(
       ai_generated?: { score?: number };
     };
     if (data.status !== "success") {
-      console.error("[Sightengine] API error:", data.error);
-      return null;
+      const msg = `Sightengine status=${data.status} error=${JSON.stringify(data.error)}`;
+      console.error("[Sightengine]", msg);
+      return { data: null, error: msg };
     }
 
     const aiScore = data.ai_generated?.score ?? 0;
@@ -235,10 +242,11 @@ export async function aiGeneratedCheck(
       );
     }
 
-    return { aiScore, flags };
+    return { data: { aiScore, flags }, error: null };
   } catch (err) {
-    console.error("[Sightengine] fetch error:", err);
-    return null;
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[Sightengine] fetch error:", msg);
+    return { data: null, error: `Sightengine fetch threw: ${msg}` };
   }
 }
 

@@ -141,7 +141,7 @@ export async function POST(request: Request) {
     }
 
     // Run external checks in parallel while Claude analyses the image
-    const [reverseImage, aiDetection, claudeResponse] = await Promise.all([
+    const [reverseImageResult, aiDetectionResult, claudeResponse] = await Promise.all([
       reverseImageSearch(data),
       aiGeneratedCheck(data, media_type),
       getClient().messages.create({
@@ -187,6 +187,9 @@ export async function POST(request: Request) {
       summary: string;
       advice: string[];
     };
+
+    const reverseImage = reverseImageResult.data;
+    const aiDetection = aiDetectionResult.data;
 
     const realScore = computeRealScore({
       faceDetected: claudeAnalysis.faceDetected,
@@ -239,7 +242,9 @@ export async function POST(request: Request) {
         visionKeySet: !!process.env.GOOGLE_CLOUD_VISION_KEY,
         sightengineSet: !!(process.env.SIGHTENGINE_USER && process.env.SIGHTENGINE_SECRET),
         reverseImageRan: reverseImage !== null,
+        reverseImageError: reverseImageResult.error,
         aiDetectionRan: aiDetection !== null,
+        aiDetectionError: aiDetectionResult.error,
       },
     });
   } catch (err) {
