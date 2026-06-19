@@ -59,6 +59,17 @@ export interface Verdict {
   link_checks?: UrlCheck[];
   /** Hard-signal phone reputation checks, added by the API (not the model). */
   phone_checks?: PhoneCheck[];
+  /** Community-reported matches for any domain or phone found in the input. */
+  community_reports?: CommunityMatch[];
+}
+
+export interface CommunityMatch {
+  inputType: "domain" | "phone" | "email";
+  inputValue: string;
+  reportCount: number;
+  source: string;
+  sourceLabel: string | null;
+  lastReported: string;
 }
 
 /** Subscription tier — drives which model handles the check. */

@@ -1,4 +1,4 @@
-import type { Verdict, RiskLevel, PhoneCheck } from "@/app/lib/scamAnalysis";
+import type { Verdict, RiskLevel, PhoneCheck, CommunityMatch } from "@/app/lib/scamAnalysis";
 
 const RISK: Record<
   RiskLevel,
@@ -103,6 +103,39 @@ export default function VerdictCard({ verdict }: { verdict: Verdict }) {
                     !
                   </span>
                   <span>{flag}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {verdict.community_reports && verdict.community_reports.length > 0 && (
+          <section className="rounded-xl border border-red-200 bg-red-50/70 p-4">
+            <h3 className="text-sm font-semibold text-red-900">
+              🚨 Community scam database matches
+            </h3>
+            <ul className="mt-2.5 space-y-2">
+              {verdict.community_reports.map((m: CommunityMatch, i: number) => (
+                <li key={i} className="flex flex-wrap items-start gap-2 text-sm">
+                  <span className="font-mono text-slate-800">{m.inputValue}</span>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                      m.source === "fca"
+                        ? "bg-purple-100 text-purple-800"
+                        : m.source === "urlhaus"
+                          ? "bg-red-100 text-red-700"
+                          : "bg-orange-100 text-orange-700"
+                    }`}
+                  >
+                    {m.source === "fca"
+                      ? "FCA Warning List"
+                      : m.source === "urlhaus"
+                        ? "URLhaus"
+                        : `${m.reportCount} user report${m.reportCount !== 1 ? "s" : ""}`}
+                  </span>
+                  {m.sourceLabel && (
+                    <span className="text-xs text-slate-500">{m.sourceLabel}</span>
+                  )}
                 </li>
               ))}
             </ul>

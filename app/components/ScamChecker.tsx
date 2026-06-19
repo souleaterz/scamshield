@@ -62,6 +62,7 @@ export default function ScamChecker({
   const [limitReached, setLimitReached] = useState(false);
   const [loading, setLoading] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const [reportState, setReportState] = useState<"idle" | "working" | "done">("idle");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const showAds = tier === "free";
@@ -153,12 +154,32 @@ export default function ScamChecker({
     }
   }
 
+  async function handleReport() {
+    if (!verdict || reportState !== "idle") return;
+    const items: { inputType: "domain" | "phone"; inputValue: string }[] = [];
+    for (const c of verdict.link_checks ?? []) items.push({ inputType: "domain", inputValue: c.host });
+    for (const c of verdict.phone_checks ?? []) items.push({ inputType: "phone", inputValue: c.e164 });
+    if (items.length === 0) return;
+    setReportState("working");
+    try {
+      await fetch("/api/report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items }),
+      });
+      setReportState("done");
+    } catch {
+      setReportState("idle");
+    }
+  }
+
   function reset() {
     setText("");
     setImage(null);
     setVerdict(null);
     setError(null);
     setLimitReached(false);
+    setReportState("idle");
   }
 
   return (
@@ -279,7 +300,33 @@ export default function ScamChecker({
       {verdict && (
         <div className="space-y-3">
           <VerdictCard verdict={verdict} />
-          <div className="flex justify-end">
+          <div className="flex items-center justify-between gap-3">
+            {(() => {
+              const hasIdentifiers =
+                (verdict.link_checks?.length ?? 0) > 0 ||
+                (verdict.phone_checks?.length ?? 0) > 0;
+              if (!hasIdentifiers) return <span />;
+              return (
+                <button
+                  type="button"
+                  onClick={handleReport}
+                  disabled={reportState !== "idle"}
+                  className={`text-sm font-medium transition-colors ${
+                    reportState === "done"
+                      ? "cursor-default text-emerald-600"
+                      : reportState === "working"
+                        ? "cursor-wait text-slate-400"
+                        : "text-slate-500 hover:text-red-600"
+                  }`}
+                >
+                  {reportState === "done"
+                    ? "✓ Reported — thank you"
+                    : reportState === "working"
+                      ? "Reporting…"
+                      : "🚩 Report as scam"}
+                </button>
+              );
+            })()}
             <ShareButton verdict={verdict} />
           </div>
         </div>

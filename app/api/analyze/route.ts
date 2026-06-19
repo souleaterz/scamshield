@@ -10,6 +10,7 @@ import { checkRateLimit, recordCheck } from "@/app/lib/rateLimit";
 import { getTierForUser } from "@/app/lib/subscription";
 import { checkUrlsInText, describeChecks } from "@/app/lib/urlReputation";
 import { checkPhonesInText, describePhoneChecks } from "@/app/lib/phoneReputation";
+import { lookupCommunityReports, describeCommunityReports } from "@/app/lib/communityReports";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -95,13 +96,18 @@ export async function POST(request: Request) {
       );
     }
 
-    // Hard-signal checks (links + phones) run in parallel before the Claude call.
-    const [linkChecks, phoneChecks] = await Promise.all([
+    // Hard-signal checks run in parallel before the Claude call.
+    const [linkChecks, phoneChecks, communityMatches] = await Promise.all([
       trimmedText ? checkUrlsInText(trimmedText) : Promise.resolve([]),
       trimmedText ? checkPhonesInText(trimmedText) : Promise.resolve([]),
+      trimmedText ? lookupCommunityReports(trimmedText) : Promise.resolve([]),
     ]);
 
-    const hardSignals = [describeChecks(linkChecks), describePhoneChecks(phoneChecks)]
+    const hardSignals = [
+      describeCommunityReports(communityMatches),
+      describeChecks(linkChecks),
+      describePhoneChecks(phoneChecks),
+    ]
       .filter(Boolean)
       .join("\n\n");
 
@@ -122,7 +128,12 @@ export async function POST(request: Request) {
       summary: verdict.summary,
     });
 
-    return NextResponse.json({ ...verdict, link_checks: linkChecks, phone_checks: phoneChecks });
+    return NextResponse.json({
+      ...verdict,
+      link_checks: linkChecks,
+      phone_checks: phoneChecks,
+      community_reports: communityMatches,
+    });
   } catch (err) {
     if (err instanceof Error && err.message.includes("ANTHROPIC_API_KEY")) {
       return NextResponse.json(

@@ -55,3 +55,42 @@ create table if not exists public.shared_verdicts (
 
 -- Read by the server (service role) for the share page + OG image.
 alter table public.shared_verdicts enable row level security;
+
+
+-- Community scam reports: user-submitted + seeded from FCA warning list / URLhaus.
+-- Keyed on (input_type, input_value) — one row per unique identifier, with an
+-- incrementing report_count so each new reporter bumps the number.
+create table if not exists public.scam_reports (
+  id               uuid primary key default gen_random_uuid(),
+  input_type       text not null check (input_type in ('domain', 'phone', 'email')),
+  input_value      text not null,        -- normalised: domain without www, E.164 phone
+  report_count     int  not null default 1,
+  source           text not null default 'user'
+                     check (source in ('user', 'fca', 'urlhaus')),
+  source_label     text,                 -- e.g. "FCA Warning List: XYZ Capital Ltd"
+  first_reported_at timestamptz not null default now(),
+  last_reported_at  timestamptz not null default now(),
+  constraint scam_reports_unique unique (input_type, input_value)
+);
+
+create index if not exists scam_reports_lookup_idx
+  on public.scam_reports (input_type, input_value);
+
+alter table public.scam_reports enable row level security;
+
+-- Atomically insert or increment a community report.
+create or replace function public.increment_scam_report(
+  p_input_type  text,
+  p_input_value text,
+  p_source      text    default 'user',
+  p_label       text    default null
+) returns void language plpgsql security definer as $$
+begin
+  insert into public.scam_reports (input_type, input_value, report_count, source, source_label)
+  values (p_input_type, p_input_value, 1, p_source, p_label)
+  on conflict on constraint scam_reports_unique
+  do update set
+    report_count     = scam_reports.report_count + 1,
+    last_reported_at = now();
+end;
+$$;

@@ -53,7 +53,7 @@ Turn subjective AI guesses into verifiable checks. Most need a third-party API +
 
 ## ⬜ Platform plays (longer term)
 
-- [ ] **Community scam database** — user reports + match new inputs against them (network effect)
+- [x] **Community scam database** — `scam_reports` table keyed by domain/phone; "Report as scam" button after every verdict; community matches fed to Claude as STRONG evidence + shown in verdict card before other checks. Seeded from FCA Warning List + URLhaus via `scripts/seed-scam-db.mjs`
 - [ ] **Passive browser protection** — proactively warn on risky pages/links
 - [ ] **Public API / B2B** — let banks, marketplaces, dating apps embed ScamShield checks
 - [ ] **Mobile app** — call/SMS screening where scams actually land
