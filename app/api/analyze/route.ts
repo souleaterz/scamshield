@@ -36,9 +36,10 @@ export async function POST(request: Request) {
     );
   }
 
-  const { text, image } = (body ?? {}) as {
+  const { text, image, emailContext } = (body ?? {}) as {
     text?: unknown;
     image?: { media_type?: unknown; data?: unknown };
+    emailContext?: unknown;
   };
 
   const trimmedText = typeof text === "string" ? text.trim() : "";
@@ -103,7 +104,13 @@ export async function POST(request: Request) {
       trimmedText ? lookupCommunityReports(trimmedText) : Promise.resolve([]),
     ]);
 
+    const parsedEmailContext =
+      typeof emailContext === "string" && emailContext.trim()
+        ? emailContext.trim()
+        : null;
+
     const hardSignals = [
+      parsedEmailContext,
       describeCommunityReports(communityMatches),
       describeChecks(linkChecks),
       describePhoneChecks(phoneChecks),

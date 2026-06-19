@@ -3,8 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Verdict, ImageMediaType, Tier } from "@/app/lib/scamAnalysis";
 import type { PersonVerificationResult } from "@/app/lib/imagePersonVerification";
+import {
+  parseEmailHeaders,
+  looksLikeEmailHeaders,
+  type EmailHeaderAnalysis,
+} from "@/app/lib/emailHeaderParser";
 import VerdictCard from "@/app/components/VerdictCard";
 import PersonVerdictCard from "@/app/components/PersonVerdictCard";
+import EmailHeaderCard from "@/app/components/EmailHeaderCard";
 import ShareButton from "@/app/components/ShareButton";
 import PricingPlans from "@/app/components/PricingPlans";
 import AdSlot from "@/app/components/AdSlot";
@@ -46,7 +52,7 @@ function readImageFile(file: File): Promise<AttachedImage> {
   });
 }
 
-type Mode = "check" | "verify";
+type Mode = "check" | "verify" | "email";
 
 export default function ScamChecker({
   tier,
@@ -64,6 +70,8 @@ export default function ScamChecker({
   const [image, setImage] = useState<AttachedImage | null>(null);
   const [verdict, setVerdict] = useState<Verdict | null>(null);
   const [personResult, setPersonResult] = useState<PersonVerificationResult | null>(null);
+  const [emailText, setEmailText] = useState("");
+  const [emailAnalysis, setEmailAnalysis] = useState<EmailHeaderAnalysis | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [limitReached, setLimitReached] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -185,9 +193,47 @@ export default function ScamChecker({
     setImage(null);
     setVerdict(null);
     setPersonResult(null);
+    setEmailText("");
+    setEmailAnalysis(null);
     setError(null);
     setLimitReached(false);
     setReportState("idle");
+  }
+
+  async function handleEmailSubmit() {
+    const trimmed = emailText.trim();
+    if (!trimmed || loading) return;
+    setLoading(true);
+    setError(null);
+    setLimitReached(false);
+    setVerdict(null);
+    setEmailAnalysis(null);
+
+    // Parse headers client-side first (instant, no API cost)
+    const analysis = looksLikeEmailHeaders(trimmed)
+      ? parseEmailHeaders(trimmed)
+      : null;
+    setEmailAnalysis(analysis);
+
+    try {
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: trimmed,
+          // Prepend the hard parsed signals so Claude sees auth results
+          emailContext: analysis?.signals,
+        }),
+      });
+      const payload = await res.json();
+      if (res.status === 429) { setLimitReached(true); return; }
+      if (!res.ok) throw new Error(payload?.error ?? "Something went wrong.");
+      setVerdict(payload as Verdict);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Something went wrong.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   function switchMode(next: Mode) {
@@ -233,29 +279,31 @@ export default function ScamChecker({
 
       {/* Mode tabs */}
       <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-        <div className="flex border-b border-slate-200">
-          <button
-            type="button"
-            onClick={() => switchMode("check")}
-            className={`flex-1 px-4 py-3 text-sm font-semibold transition-colors ${
-              mode === "check"
-                ? "border-b-2 border-blue-600 text-blue-600 bg-blue-50/50"
-                : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
-            }`}
-          >
-            Check Message / Screenshot
-          </button>
-          <button
-            type="button"
-            onClick={() => switchMode("verify")}
-            className={`flex-1 px-4 py-3 text-sm font-semibold transition-colors ${
-              mode === "verify"
-                ? "border-b-2 border-violet-600 text-violet-600 bg-violet-50/50"
-                : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
-            }`}
-          >
-            🕵️ Verify Profile Photo
-          </button>
+        <div className="flex border-b border-slate-200 overflow-x-auto">
+          {(
+            [
+              { id: "check", label: "Check Content" },
+              { id: "email", label: "📧 Email Headers" },
+              { id: "verify", label: "🕵️ Verify Photo" },
+            ] as { id: Mode; label: string }[]
+          ).map(({ id, label }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => switchMode(id)}
+              className={`flex-1 whitespace-nowrap px-4 py-3 text-sm font-semibold transition-colors ${
+                mode === id
+                  ? id === "verify"
+                    ? "border-b-2 border-violet-600 text-violet-600 bg-violet-50/50"
+                    : id === "email"
+                      ? "border-b-2 border-amber-500 text-amber-700 bg-amber-50/50"
+                      : "border-b-2 border-blue-600 text-blue-600 bg-blue-50/50"
+                  : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
         {/* ── Check mode ── */}
@@ -310,6 +358,38 @@ export default function ScamChecker({
                   {loading ? "Checking…" : "Check for scams"}
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Email Headers mode ── */}
+        {mode === "email" && (
+          <div className="p-4">
+            <p className="mb-3 text-sm text-slate-500">
+              Paste the <strong>full email source</strong> or just the raw headers to check for spoofing, phishing, and authentication failures.
+              In Gmail: open the email → More options (⋮) → <strong>Show original</strong> → copy everything.
+            </p>
+            <textarea
+              value={emailText}
+              onChange={(e) => setEmailText(e.target.value)}
+              placeholder={"Received: from mail.example.com...\nAuthentication-Results: ...\nFrom: Support <support@suspicious-domain.com>\nSubject: Your account has been compromised\n..."}
+              rows={8}
+              className="w-full resize-none rounded-lg border border-slate-200 bg-slate-50 p-3 font-mono text-xs text-slate-800 placeholder:text-slate-400 focus:border-amber-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-100"
+            />
+            <div className="mt-3 flex justify-end gap-2">
+              {(emailText || verdict || emailAnalysis) && (
+                <button type="button" onClick={reset} className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">
+                  Clear
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleEmailSubmit}
+                disabled={!emailText.trim() || loading}
+                className="rounded-lg bg-amber-500 px-5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-600 disabled:cursor-not-allowed disabled:bg-slate-300"
+              >
+                {loading ? "Analysing…" : "Analyse email"}
+              </button>
             </div>
           </div>
         )}
@@ -400,6 +480,8 @@ export default function ScamChecker({
           </div>
         </div>
       )}
+
+      {emailAnalysis && <EmailHeaderCard analysis={emailAnalysis} />}
 
       {verdict && (
         <div className="space-y-3">

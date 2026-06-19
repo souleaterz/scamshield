@@ -28,14 +28,36 @@ async function runPassiveCheck(url) {
   }
 }
 
-// Content script asks the service worker to do the passive check (service workers
+// Content scripts ask the service worker to make API calls (service workers
 // bypass CORS for hosts in host_permissions; content scripts don't).
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-  if (msg.type !== "passiveCheck") return;
-  runPassiveCheck(msg.url)
-    .then(sendResponse)
-    .catch(() => sendResponse({ riskLevel: "safe" }));
-  return true; // keep the message channel open for async response
+  if (msg.type === "passiveCheck") {
+    runPassiveCheck(msg.url)
+      .then(sendResponse)
+      .catch(() => sendResponse({ riskLevel: "safe" }));
+    return true;
+  }
+
+  if (msg.type === "analyzeText") {
+    fetch(`${SCAMSHIELD_API}/api/analyze`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ text: msg.text }),
+    })
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 429) {
+          sendResponse({ ok: false, limitReached: true, error: data?.error });
+        } else if (!res.ok) {
+          sendResponse({ ok: false, error: data?.error ?? "Request failed" });
+        } else {
+          sendResponse({ ok: true, data });
+        }
+      })
+      .catch((err) => sendResponse({ ok: false, error: err.message }));
+    return true;
+  }
 });
 
 const MENU_ID = "scamshield-check";
