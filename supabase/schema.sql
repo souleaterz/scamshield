@@ -40,3 +40,18 @@ create index if not exists subscriptions_customer_idx
 
 -- Same lockdown: written only by the server via the service-role key.
 alter table public.subscriptions enable row level security;
+
+
+-- Shared verdicts: created when a user taps "Share". Holds only the verdict
+-- headline (never the raw input the user pasted). Read publicly via short id.
+create table if not exists public.shared_verdicts (
+  id            text primary key,            -- short random id used in /r/<id>
+  risk_level    text not null check (risk_level in ('safe', 'suspicious', 'likely_scam')),
+  confidence    int  not null default 0,
+  detected_type text,
+  summary       text not null,
+  created_at    timestamptz not null default now()
+);
+
+-- Read by the server (service role) for the share page + OG image.
+alter table public.shared_verdicts enable row level security;

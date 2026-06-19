@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Verdict, ImageMediaType, Tier } from "@/app/lib/scamAnalysis";
 import VerdictCard from "@/app/components/VerdictCard";
+import ShareButton from "@/app/components/ShareButton";
 import PricingPlans from "@/app/components/PricingPlans";
 import AdSlot from "@/app/components/AdSlot";
 import ManageBilling from "@/app/components/ManageBilling";
@@ -275,7 +276,14 @@ export default function ScamChecker({
         </div>
       )}
 
-      {verdict && <VerdictCard verdict={verdict} />}
+      {verdict && (
+        <div className="space-y-3">
+          <VerdictCard verdict={verdict} />
+          <div className="flex justify-end">
+            <ShareButton verdict={verdict} />
+          </div>
+        </div>
+      )}
 
       {showAds && !verdict && !limitReached && <AdSlot />}
     </>
