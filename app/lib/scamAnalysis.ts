@@ -8,6 +8,15 @@ export type ImageMediaType =
   | "image/gif"
   | "image/webp";
 
+export interface UrlCheck {
+  url: string;
+  host: string;
+  /** Domain age in days from RDAP, or null if unknown. */
+  domainAgeDays: number | null;
+  registeredOn: string | null;
+  flags: string[];
+}
+
 export interface Verdict {
   /** Overall risk classification. */
   risk_level: RiskLevel;
@@ -23,6 +32,8 @@ export interface Verdict {
   explanation: string;
   /** Recommended next steps for the user. */
   advice: string[];
+  /** Hard-signal link reputation checks, added by the API (not the model). */
+  link_checks?: UrlCheck[];
 }
 
 /** Subscription tier — drives which model handles the check. */
@@ -33,6 +44,8 @@ export interface AnalyzeInput {
   image?: { media_type: ImageMediaType; data: string }; // data is base64, no prefix
   /** Defaults to "free". */
   tier?: Tier;
+  /** Factual link-reputation findings appended to the prompt. */
+  linkContext?: string;
 }
 
 // Free/basic checks run on the cheaper, fast Haiku model (~0.3c/check); paid
@@ -138,11 +151,12 @@ export async function analyzeContent(input: AnalyzeInput): Promise<Verdict> {
     });
   }
 
+  const base = input.text
+    ? `Analyse the following content and decide whether it is a scam:\n\n${input.text}`
+    : "Analyse the attached image and decide whether it is a scam.";
   content.push({
     type: "text",
-    text: input.text
-      ? `Analyse the following content and decide whether it is a scam:\n\n${input.text}`
-      : "Analyse the attached image and decide whether it is a scam.",
+    text: input.linkContext ? `${base}\n\n${input.linkContext}` : base,
   });
 
   const response = await getClient().messages.create({

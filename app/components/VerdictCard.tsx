@@ -109,6 +109,57 @@ export default function VerdictCard({ verdict }: { verdict: Verdict }) {
           </section>
         )}
 
+        {verdict.link_checks && verdict.link_checks.length > 0 && (
+          <section className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <h3 className="text-sm font-semibold text-slate-900">🔗 Link checks</h3>
+            <ul className="mt-2.5 space-y-3">
+              {verdict.link_checks.map((c, i) => (
+                <li key={i}>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="break-all font-mono text-sm text-slate-800">
+                      {c.host}
+                    </span>
+                    {c.domainAgeDays !== null && (
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                          c.domainAgeDays <= 30
+                            ? "bg-red-100 text-red-700"
+                            : c.domainAgeDays <= 90
+                              ? "bg-amber-100 text-amber-700"
+                              : "bg-emerald-100 text-emerald-700"
+                        }`}
+                      >
+                        {c.domainAgeDays < 365
+                          ? `${c.domainAgeDays}d old`
+                          : `${Math.floor(c.domainAgeDays / 365)}y old`}
+                      </span>
+                    )}
+                  </div>
+                  {c.flags.length > 0 ? (
+                    <ul className="mt-1.5 space-y-1">
+                      {c.flags.map((f, j) => (
+                        <li
+                          key={j}
+                          className="flex gap-2 text-sm text-slate-600"
+                        >
+                          <span aria-hidden className="text-amber-500">
+                            ⚠
+                          </span>
+                          <span>{f}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-1 text-sm text-slate-500">
+                      No automated red flags on this domain.
+                    </p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
         <section>
           <h3 className="text-sm font-semibold text-slate-900">What this means</h3>
           <p className="mt-1.5 text-sm leading-relaxed text-slate-600">

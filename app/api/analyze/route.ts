@@ -8,6 +8,7 @@ import {
 import { getUserId, getClientIp } from "@/app/lib/auth";
 import { checkRateLimit, recordCheck } from "@/app/lib/rateLimit";
 import { getTierForUser } from "@/app/lib/subscription";
+import { checkUrlsInText, describeChecks } from "@/app/lib/urlReputation";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -93,10 +94,14 @@ export async function POST(request: Request) {
       );
     }
 
+    // Hard-signal link reputation (domain age + heuristics) feeds the verdict.
+    const linkChecks = trimmedText ? await checkUrlsInText(trimmedText) : [];
+
     const verdict = await analyzeContent({
       text: trimmedText || undefined,
       image: validatedImage,
       tier,
+      linkContext: describeChecks(linkChecks),
     });
 
     // Best-effort: records usage for the daily limit + future history.
@@ -109,7 +114,7 @@ export async function POST(request: Request) {
       summary: verdict.summary,
     });
 
-    return NextResponse.json(verdict);
+    return NextResponse.json({ ...verdict, link_checks: linkChecks });
   } catch (err) {
     if (err instanceof Error && err.message.includes("ANTHROPIC_API_KEY")) {
       return NextResponse.json(

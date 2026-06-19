@@ -35,8 +35,10 @@ Legend: ✅ done · 🚧 partial · ⬜ planned
 
 Turn subjective AI guesses into verifiable checks. Most need a third-party API + key.
 
-- [ ] **URL / domain reputation** — Google Safe Browsing + domain age (WHOIS) +
-      urlscan/VirusTotal + lookalike/typosquat detection *(highest-value single add)*
+- [x] **URL / domain reputation** — domain age (RDAP) + heuristics (raw-IP, shorteners,
+      risky TLDs, punycode, brand impersonation) fed into the verdict and shown in the card
+  - [ ] Add **Google Safe Browsing** (needs a free Google Cloud key) for known-bad URLs
+  - [ ] Optional: urlscan.io / VirusTotal enrichment
 - [ ] **Phone number intelligence** — format/carrier lookup + known-scam reputation
 - [ ] **Email authenticity** — parse pasted headers for SPF/DKIM/DMARC + spoofing
 - [ ] **Crypto address check** — match wallet addresses against scam-report databases
