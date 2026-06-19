@@ -40,6 +40,13 @@
 
   if (isKnownSafe(location.hostname)) return;
 
+  // Respect the passive protection toggle from the popup.
+  chrome.storage.local.get({ passiveEnabled: true }, ({ passiveEnabled }) => {
+    if (!passiveEnabled) return;
+    doPassiveCheck();
+  });
+
+  function doPassiveCheck() {
   // Ask the background service worker to do the check (avoids CORS).
   chrome.runtime.sendMessage(
     { type: "passiveCheck", url: location.href },
@@ -118,4 +125,5 @@
 
     document.documentElement.insertBefore(host, document.documentElement.firstChild);
   }
+  } // end doPassiveCheck
 })();

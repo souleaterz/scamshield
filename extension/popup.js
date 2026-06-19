@@ -1,7 +1,10 @@
-const input = document.getElementById("input");
-const button = document.getElementById("check");
-const shotButton = document.getElementById("shot");
-const result = document.getElementById("result");
+// Elements
+const passiveToggle = document.getElementById("passive-toggle");
+const passiveSub    = document.getElementById("passive-sub");
+const shotBtn       = document.getElementById("shot");
+const resultEl      = document.getElementById("result");
+const authText      = document.getElementById("auth-text");
+const authBtn       = document.getElementById("auth-btn");
 
 const COLORS = { safe: "#10b981", suspicious: "#f59e0b", likely_scam: "#ef4444" };
 const LABELS = { safe: "Safe", suspicious: "Suspicious", likely_scam: "Likely Scam" };
@@ -13,9 +16,30 @@ function esc(s) {
   );
 }
 
+// ── Passive protection toggle ─────────────────────────────────────────────────
+
+chrome.storage.local.get({ passiveEnabled: true }, ({ passiveEnabled }) => {
+  passiveToggle.checked = passiveEnabled;
+  updateSubText(passiveEnabled);
+});
+
+passiveToggle.addEventListener("change", () => {
+  const enabled = passiveToggle.checked;
+  chrome.storage.local.set({ passiveEnabled: enabled });
+  updateSubText(enabled);
+});
+
+function updateSubText(enabled) {
+  passiveSub.textContent = enabled
+    ? "Warns you on risky pages automatically"
+    : "Passive warnings are paused";
+}
+
+// ── Scan this page ────────────────────────────────────────────────────────────
+
 function show(html) {
-  result.innerHTML = html;
-  result.style.display = "block";
+  resultEl.innerHTML = html;
+  resultEl.style.display = "block";
 }
 
 function fullResultUrl(verdict) {
@@ -32,78 +56,79 @@ function renderVerdict(data) {
   const flags = Array.isArray(data.red_flags)
     ? data.red_flags
         .slice(0, 3)
-        .map((f) => `<div class="li"><span class="dot">•</span>${esc(f)}</div>`)
+        .map((f) => `<div class="r-flag"><span class="r-dot">•</span>${esc(f)}</div>`)
         .join("")
     : "";
   show(
     `<span class="badge" style="background:${color};">${esc(label)}</span>` +
-      `<p class="summary">${esc(data.summary)}</p>` +
-      `<div class="meta">Confidence ${esc(data.confidence)}% · ${esc(data.detected_type)}</div>` +
-      (flags ? `<div class="flags">${flags}</div>` : "") +
-      `<div class="meta" style="margin-top:8px;">` +
-      `<a href="${esc(fullResultUrl(data))}" target="_blank" rel="noreferrer">See full result →</a></div>`,
+      `<p class="r-summary">${esc(data.summary)}</p>` +
+      `<div class="r-meta">Confidence ${esc(data.confidence)}% · ${esc(data.detected_type)}</div>` +
+      (flags ? `<div class="r-flags">${flags}</div>` : "") +
+      `<div class="r-meta" style="margin-top:8px;">` +
+      `<a class="r-link" href="${esc(fullResultUrl(data))}" target="_blank" rel="noreferrer">See full result →</a></div>`,
   );
 }
 
-async function analyze(body, loadingText) {
-  show(`<span class="muted">${esc(loadingText)}</span>`);
-  const res = await fetch(`${SCAMSHIELD_API}/api/analyze`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include", // use the signed-in user's plan if available
-    body: JSON.stringify(body),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (res.status === 429) {
-    show(
-      `<span class="muted">You've used today's free check. ` +
-        `<a href="${esc(SCAMSHIELD_API)}" target="_blank" rel="noreferrer">Upgrade</a> for more.</span>`,
-    );
-  } else if (!res.ok) {
-    show(`<span class="muted">${esc(data?.error || "Something went wrong.")}</span>`);
-  } else {
-    renderVerdict(data);
-  }
-}
-
-async function checkText() {
-  const text = input.value.trim();
-  if (!text) return;
-  setBusy(true);
-  try {
-    await analyze({ text }, "Checking this for scams…");
-  } catch {
-    show('<span class="muted">Couldn\'t reach ScamShield. Check your connection.</span>');
-  } finally {
-    setBusy(false);
-  }
-}
-
 async function scanPage() {
-  setBusy(true);
+  shotBtn.disabled = true;
+  shotBtn.textContent = "Scanning…";
+  show('<span class="r-muted">Capturing and checking this page…</span>');
   try {
     const dataUrl = await chrome.tabs.captureVisibleTab({ format: "png" });
     const base64 = (dataUrl || "").split(",")[1];
     if (!base64) throw new Error("capture failed");
-    await analyze(
-      { image: { media_type: "image/png", data: base64 } },
-      "Capturing and checking this page…",
-    );
+    const res = await fetch(`${SCAMSHIELD_API}/api/analyze`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ image: { media_type: "image/png", data: base64 } }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 429) {
+      show(
+        `<span class="r-muted">You've used today's free check. ` +
+          `<a class="r-link" href="${esc(SCAMSHIELD_API)}" target="_blank" rel="noreferrer">Upgrade</a> for more.</span>`,
+      );
+    } else if (!res.ok) {
+      show(`<span class="r-muted">${esc(data?.error || "Something went wrong.")}</span>`);
+    } else {
+      renderVerdict(data);
+    }
   } catch {
-    show('<span class="muted">Couldn\'t capture this page. Some pages (e.g. chrome:// or the Web Store) block it.</span>');
+    show('<span class="r-muted">Couldn\'t capture this page. Some pages (e.g. chrome:// or the Web Store) block screenshots.</span>');
   } finally {
-    setBusy(false);
+    shotBtn.disabled = false;
+    shotBtn.innerHTML = "<span>📸</span> Scan this page";
   }
 }
 
-function setBusy(busy) {
-  button.disabled = busy;
-  shotButton.disabled = busy;
-  button.textContent = busy ? "Checking…" : "Check for scams";
+shotBtn.addEventListener("click", scanPage);
+
+// ── Auth status ───────────────────────────────────────────────────────────────
+
+async function checkAuth() {
+  try {
+    const res = await fetch(`${SCAMSHIELD_API}/api/me`, {
+      credentials: "include",
+      cache: "no-store",
+    });
+    const data = res.ok ? await res.json() : null;
+    if (data?.signedIn) {
+      authText.textContent = "Signed in ✓";
+      authText.classList.add("ok");
+      authBtn.style.display = "none";
+    } else {
+      authText.textContent = "Not signed in";
+      authBtn.textContent = "Sign in";
+      authBtn.style.display = "";
+      authBtn.onclick = () => {
+        chrome.tabs.create({ url: `${SCAMSHIELD_API}/sign-in` });
+        window.close();
+      };
+    }
+  } catch {
+    authText.textContent = "Couldn't check sign-in status";
+  }
 }
 
-button.addEventListener("click", checkText);
-shotButton.addEventListener("click", scanPage);
-input.addEventListener("keydown", (e) => {
-  if ((e.ctrlKey || e.metaKey) && e.key === "Enter") checkText();
-});
+checkAuth();

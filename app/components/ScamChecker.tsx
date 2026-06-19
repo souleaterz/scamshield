@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Verdict, ImageMediaType, Tier } from "@/app/lib/scamAnalysis";
+import type { PersonVerificationResult } from "@/app/lib/imagePersonVerification";
 import VerdictCard from "@/app/components/VerdictCard";
+import PersonVerdictCard from "@/app/components/PersonVerdictCard";
 import ShareButton from "@/app/components/ShareButton";
 import PricingPlans from "@/app/components/PricingPlans";
 import AdSlot from "@/app/components/AdSlot";
@@ -44,6 +46,8 @@ function readImageFile(file: File): Promise<AttachedImage> {
   });
 }
 
+type Mode = "check" | "verify";
+
 export default function ScamChecker({
   tier,
   signedIn,
@@ -55,15 +59,18 @@ export default function ScamChecker({
   clerkEnabled: boolean;
   justUpgraded?: boolean;
 }) {
+  const [mode, setMode] = useState<Mode>("check");
   const [text, setText] = useState("");
   const [image, setImage] = useState<AttachedImage | null>(null);
   const [verdict, setVerdict] = useState<Verdict | null>(null);
+  const [personResult, setPersonResult] = useState<PersonVerificationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [limitReached, setLimitReached] = useState(false);
   const [loading, setLoading] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [reportState, setReportState] = useState<"idle" | "working" | "done">("idle");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const verifyInputRef = useRef<HTMLInputElement>(null);
 
   const showAds = tier === "free";
 
@@ -177,9 +184,41 @@ export default function ScamChecker({
     setText("");
     setImage(null);
     setVerdict(null);
+    setPersonResult(null);
     setError(null);
     setLimitReached(false);
     setReportState("idle");
+  }
+
+  function switchMode(next: Mode) {
+    reset();
+    setMode(next);
+  }
+
+  async function handleVerify() {
+    if (!image || loading) return;
+    setLoading(true);
+    setError(null);
+    setLimitReached(false);
+    setPersonResult(null);
+    try {
+      const res = await fetch("/api/verify-person", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: { media_type: image.media_type, data: image.data } }),
+      });
+      const payload = await res.json();
+      if (res.status === 429) {
+        setLimitReached(true);
+        return;
+      }
+      if (!res.ok) throw new Error(payload?.error ?? "Something went wrong.");
+      setPersonResult(payload as PersonVerificationResult);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Something went wrong.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -192,87 +231,152 @@ export default function ScamChecker({
         </div>
       )}
 
-      <section
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDragging(true);
-        }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={(e) => {
-          e.preventDefault();
-          setDragging(false);
-          void handleFiles(e.dataTransfer.files);
-        }}
-        className={`rounded-2xl border bg-white p-4 shadow-sm transition-colors ${
-          dragging ? "border-blue-400 ring-2 ring-blue-100" : "border-slate-200"
-        }`}
-      >
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onPaste={handlePaste}
-          placeholder="Paste the suspicious text, link, or phone number here…"
-          rows={6}
-          className="w-full resize-none rounded-lg border border-slate-200 bg-slate-50 p-3 text-slate-900 placeholder:text-slate-400 focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100"
-        />
+      {/* Mode tabs */}
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="flex border-b border-slate-200">
+          <button
+            type="button"
+            onClick={() => switchMode("check")}
+            className={`flex-1 px-4 py-3 text-sm font-semibold transition-colors ${
+              mode === "check"
+                ? "border-b-2 border-blue-600 text-blue-600 bg-blue-50/50"
+                : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+            }`}
+          >
+            Check Message / Screenshot
+          </button>
+          <button
+            type="button"
+            onClick={() => switchMode("verify")}
+            className={`flex-1 px-4 py-3 text-sm font-semibold transition-colors ${
+              mode === "verify"
+                ? "border-b-2 border-violet-600 text-violet-600 bg-violet-50/50"
+                : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+            }`}
+          >
+            🕵️ Verify Profile Photo
+          </button>
+        </div>
 
-        {image && (
-          <div className="mt-3 flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-2">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={image.previewUrl}
-              alt={image.name}
-              className="h-12 w-12 rounded object-cover"
+        {/* ── Check mode ── */}
+        {mode === "check" && (
+          <div
+            onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={(e) => { e.preventDefault(); setDragging(false); void handleFiles(e.dataTransfer.files); }}
+            className={`p-4 transition-colors ${dragging ? "bg-blue-50" : ""}`}
+          >
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onPaste={handlePaste}
+              placeholder="Paste the suspicious text, link, or phone number here…"
+              rows={6}
+              className="w-full resize-none rounded-lg border border-slate-200 bg-slate-50 p-3 text-slate-900 placeholder:text-slate-400 focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100"
             />
-            <span className="flex-1 truncate text-sm text-slate-600">
-              {image.name}
-            </span>
-            <button
-              type="button"
-              onClick={() => setImage(null)}
-              className="text-sm font-medium text-slate-400 hover:text-slate-600"
-            >
-              Remove
-            </button>
+
+            {image && (
+              <div className="mt-3 flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={image.previewUrl} alt={image.name} className="h-12 w-12 rounded object-cover" />
+                <span className="flex-1 truncate text-sm text-slate-600">{image.name}</span>
+                <button type="button" onClick={() => setImage(null)} className="text-sm font-medium text-slate-400 hover:text-slate-600">
+                  Remove
+                </button>
+              </div>
+            )}
+
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="text-sm font-medium text-blue-600 hover:text-blue-700"
+              >
+                + Add screenshot or image
+              </button>
+              <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/gif,image/webp" className="hidden" onChange={(e) => void handleFiles(e.target.files)} />
+              <div className="flex gap-2">
+                {(text || image || verdict) && (
+                  <button type="button" onClick={reset} className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">
+                    Clear
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={!canSubmit}
+                  className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                >
+                  {loading ? "Checking…" : "Check for scams"}
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="text-sm font-medium text-blue-600 hover:text-blue-700"
-          >
-            + Add screenshot or image
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/png,image/jpeg,image/gif,image/webp"
-            className="hidden"
-            onChange={(e) => void handleFiles(e.target.files)}
-          />
-          <div className="flex gap-2">
-            {(text || image || verdict) && (
+        {/* ── Verify mode ── */}
+        {mode === "verify" && (
+          <div className="p-4">
+            <p className="mb-4 text-sm text-slate-500">
+              Upload a profile photo to check if it&apos;s a real person — we run reverse image search, AI-generation detection, and visual analysis.
+            </p>
+
+            {!image ? (
               <button
                 type="button"
-                onClick={reset}
-                className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
+                onClick={() => verifyInputRef.current?.click()}
+                onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+                onDragLeave={() => setDragging(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setDragging(false);
+                  void handleFiles(e.dataTransfer.files);
+                }}
+                className={`flex w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed py-10 transition-colors ${
+                  dragging
+                    ? "border-violet-400 bg-violet-50"
+                    : "border-slate-200 bg-slate-50 hover:border-violet-300 hover:bg-violet-50/40"
+                }`}
               >
-                Clear
+                <span className="text-3xl">🖼️</span>
+                <span className="text-sm font-medium text-slate-600">
+                  Drop a profile photo here, or click to upload
+                </span>
+                <span className="text-xs text-slate-400">JPEG, PNG, WebP, GIF · max ~5 MB</span>
               </button>
+            ) : (
+              <div className="flex items-center gap-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={image.previewUrl} alt={image.name} className="h-20 w-20 rounded-lg object-cover" />
+                <div className="flex-1 min-w-0">
+                  <p className="truncate text-sm font-medium text-slate-700">{image.name}</p>
+                  <button type="button" onClick={() => setImage(null)} className="mt-1 text-xs text-slate-400 hover:text-slate-600">
+                    Remove
+                  </button>
+                </div>
+              </div>
             )}
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={!canSubmit}
-              className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-            >
-              {loading ? "Checking…" : "Check for scams"}
-            </button>
+
+            <input ref={verifyInputRef} type="file" accept="image/png,image/jpeg,image/gif,image/webp" className="hidden" onChange={(e) => void handleFiles(e.target.files)} />
+
+            <div className="mt-3 flex justify-end gap-2">
+              {(image || personResult) && (
+                <button type="button" onClick={reset} className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">
+                  Clear
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleVerify}
+                disabled={!image || loading}
+                className="rounded-lg bg-violet-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-violet-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+              >
+                {loading ? "Analysing…" : "Verify this photo"}
+              </button>
+            </div>
           </div>
-        </div>
-      </section>
+        )}
+      </div>
 
       {error && (
         <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
@@ -332,7 +436,11 @@ export default function ScamChecker({
         </div>
       )}
 
-      {showAds && !verdict && !limitReached && <AdSlot />}
+      {personResult && (
+        <PersonVerdictCard result={personResult} />
+      )}
+
+      {showAds && !verdict && !personResult && !limitReached && <AdSlot />}
     </>
   );
 }
