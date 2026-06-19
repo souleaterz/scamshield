@@ -182,6 +182,23 @@ export default function VerdictCard({ verdict }: { verdict: Verdict }) {
                     <span className="font-mono text-sm text-slate-800">
                       {c.display ?? c.raw}
                     </span>
+                    {c.spamScore !== null && (
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                          c.spamScore >= 85
+                            ? "bg-red-600 text-white"
+                            : c.spamScore >= 60
+                              ? "bg-amber-100 text-amber-700"
+                              : "bg-emerald-100 text-emerald-700"
+                        }`}
+                      >
+                        {c.spamScore >= 85
+                          ? `🚫 Spam score ${c.spamScore}/100`
+                          : c.spamScore >= 60
+                            ? `⚠ Score ${c.spamScore}/100`
+                            : `✓ Score ${c.spamScore}/100`}
+                      </span>
+                    )}
                     {c.lineType && (
                       <span
                         className={`rounded-full px-2 py-0.5 text-xs font-medium ${

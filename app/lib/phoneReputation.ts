@@ -74,6 +74,62 @@ async function carrierLookup(e164: string): Promise<string | null> {
   }
 }
 
+interface IpqsResult {
+  spamScore: number | null;
+  recentAbuse: boolean;
+  carrier: string | null;
+  flags: string[];
+}
+
+async function ipqsLookup(e164: string): Promise<IpqsResult> {
+  const key = process.env.IPQS_API_KEY;
+  const empty: IpqsResult = { spamScore: null, recentAbuse: false, carrier: null, flags: [] };
+  if (!key) return empty;
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(
+      `https://www.ipqualityscore.com/api/json/phone/${key}/${encodeURIComponent(e164)}?strictness=1`,
+      { signal: controller.signal },
+    );
+    clearTimeout(timer);
+    if (!res.ok) return empty;
+    const data = (await res.json()) as {
+      success?: boolean;
+      fraud_score?: number;
+      recent_abuse?: boolean;
+      spammer?: boolean;
+      risky?: boolean;
+      do_not_call?: boolean;
+      carrier?: string;
+    };
+    if (!data.success) return empty;
+
+    const flags: string[] = [];
+    const score = data.fraud_score ?? 0;
+    if (data.spammer || score >= 85) {
+      flags.push(`Reported as a spam or scam caller (fraud score: ${score}/100)`);
+    } else if (data.risky || score >= 60) {
+      flags.push(`Flagged as potentially risky by reputation database (fraud score: ${score}/100)`);
+    }
+    if (data.recent_abuse) {
+      flags.push("Recent abuse reports associated with this number");
+    }
+    if (data.do_not_call) {
+      flags.push("Listed on Do Not Call registry");
+    }
+
+    return {
+      spamScore: score,
+      recentAbuse: data.recent_abuse ?? false,
+      carrier: data.carrier ?? null,
+      flags,
+    };
+  } catch {
+    return empty;
+  }
+}
+
 /** Find and check phone numbers in text (up to 2). */
 export async function checkPhonesInText(text: string): Promise<PhoneCheck[]> {
   // v2:true returns NumberFound (with PhoneNumber object); GB default parses UK-local numbers.
@@ -86,8 +142,13 @@ export async function checkPhonesInText(text: string): Promise<PhoneCheck[]> {
       const e164 = phone.format("E.164");
       const type = phone.getType();
       const countryCode = phone.country ?? null;
-      const flags = heuristicFlags(type, countryCode);
-      const carrier = await carrierLookup(e164);
+      const heuristics = heuristicFlags(type, countryCode);
+
+      // Carrier lookup and spam reputation run in parallel.
+      const [abstractCarrier, ipqs] = await Promise.all([
+        carrierLookup(e164),
+        ipqsLookup(e164),
+      ]);
 
       return {
         raw,
@@ -97,8 +158,10 @@ export async function checkPhonesInText(text: string): Promise<PhoneCheck[]> {
         countryCode,
         countryName: countryCode ? (COUNTRY_NAMES[countryCode] ?? countryCode) : null,
         lineType: type ? (LINE_TYPE_LABELS[type] ?? type) : null,
-        carrier,
-        flags,
+        carrier: ipqs.carrier ?? abstractCarrier,
+        spamScore: ipqs.spamScore,
+        recentAbuse: ipqs.recentAbuse,
+        flags: [...ipqs.flags, ...heuristics],
       } satisfies PhoneCheck;
     }),
   );
@@ -107,17 +170,22 @@ export async function checkPhonesInText(text: string): Promise<PhoneCheck[]> {
 /** Compact summary for the Claude prompt. */
 export function describePhoneChecks(checks: PhoneCheck[]): string {
   if (checks.length === 0) return "";
+  const hasSpamData = checks.some((c) => c.spamScore !== null);
   const lines = checks.map((c) => {
     const parts = [
       c.display ?? c.raw,
       c.countryName ? `country: ${c.countryName}` : null,
       c.lineType ? `line type: ${c.lineType}` : null,
       c.carrier ? `carrier: ${c.carrier}` : null,
+      c.spamScore !== null ? `spam/fraud score: ${c.spamScore}/100` : null,
     ]
       .filter(Boolean)
       .join(", ");
-    const signals = c.flags.length ? c.flags.join("; ") : "no automated signals";
+    const signals = c.flags.length ? c.flags.join("; ") : "no automated signals from available checks";
     return `- ${parts}; signals: ${signals}`;
   });
-  return `Automated phone checks (factual signals — weigh these in your verdict):\n${lines.join("\n")}`;
+  const caveat = hasSpamData
+    ? ""
+    : "\nNOTE: No spam call reputation database is connected — absence of signals does NOT confirm the number is safe. Do not classify phone numbers as 'safe' based on line-type checks alone.";
+  return `Automated phone checks (factual signals — weigh these in your verdict):\n${lines.join("\n")}${caveat}`;
 }

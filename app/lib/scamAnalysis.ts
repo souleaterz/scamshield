@@ -31,8 +31,12 @@ export interface PhoneCheck {
   countryName: string | null;
   /** Line type: "Mobile", "VoIP", "Premium rate", etc. */
   lineType: string | null;
-  /** Carrier name from AbstractAPI (if key set). */
+  /** Carrier name from AbstractAPI or IPQS (if key set). */
   carrier: string | null;
+  /** IPQS fraud score 0–100 (higher = more likely spam/fraud). Null if IPQS key not set. */
+  spamScore: number | null;
+  /** IPQS: number has been reported for recent abuse. */
+  recentAbuse: boolean;
   flags: string[];
 }
 
