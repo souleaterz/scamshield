@@ -95,7 +95,11 @@ export async function reverseImageSearch(
       },
     );
 
-    if (!res.ok) return null;
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => "");
+      console.error(`[Vision] HTTP ${res.status}:`, errBody.slice(0, 300));
+      return null;
+    }
     const data = (await res.json()) as Record<string, unknown>;
     const responses = data.responses as Array<Record<string, unknown>>;
     const wd = responses?.[0]?.webDetection as Record<string, unknown> | undefined;
@@ -174,7 +178,8 @@ export async function reverseImageSearch(
       bestGuessLabel,
       flags,
     };
-  } catch {
+  } catch (err) {
+    console.error("[Vision] fetch error:", err);
     return null;
   }
 }
@@ -202,12 +207,20 @@ export async function aiGeneratedCheck(
       signal: AbortSignal.timeout(15_000),
     });
 
-    if (!res.ok) return null;
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => "");
+      console.error(`[Sightengine] HTTP ${res.status}:`, errBody.slice(0, 300));
+      return null;
+    }
     const data = (await res.json()) as {
       status: string;
+      error?: { type?: string; message?: string };
       ai_generated?: { score?: number };
     };
-    if (data.status !== "success") return null;
+    if (data.status !== "success") {
+      console.error("[Sightengine] API error:", data.error);
+      return null;
+    }
 
     const aiScore = data.ai_generated?.score ?? 0;
     const flags: string[] = [];
@@ -223,7 +236,8 @@ export async function aiGeneratedCheck(
     }
 
     return { aiScore, flags };
-  } catch {
+  } catch (err) {
+    console.error("[Sightengine] fetch error:", err);
     return null;
   }
 }

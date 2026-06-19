@@ -233,7 +233,15 @@ export async function POST(request: Request) {
       summary: claudeAnalysis.summary,
     });
 
-    return NextResponse.json(result);
+    return NextResponse.json({
+      ...result,
+      _debug: {
+        visionKeySet: !!process.env.GOOGLE_CLOUD_VISION_KEY,
+        sightengineSet: !!(process.env.SIGHTENGINE_USER && process.env.SIGHTENGINE_SECRET),
+        reverseImageRan: reverseImage !== null,
+        aiDetectionRan: aiDetection !== null,
+      },
+    });
   } catch (err) {
     if (err instanceof Error && err.message.includes("ANTHROPIC_API_KEY")) {
       return NextResponse.json(
