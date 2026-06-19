@@ -23,38 +23,39 @@ Legend: ✅ done · 🚧 partial · ⬜ planned
 - [x] **Branding** — shield mark, site favicon, extension icons
 - [x] **Verdict card redesign** — risk banner, confidence, grouped red flags + advice
 - [x] **Shareable result cards** — `/r/<id>` link + dynamic branded OG image
+- [x] **Verdict history** — `/history` page for signed-in users; shows last 50 checks with risk badge, type, summary, relative time
 
 ## 🚧 Partial
 
 - [ ] **AdSense on free tier** — placeholder ad slot in place; real units pending account approval
-- [x] **Verdict history** — `/history` page for signed-in users; shows last 50 checks with risk badge, type, summary, relative time
 
 ---
 
-## ⬜ Near-term — hard signals (the differentiators)
-
-Turn subjective AI guesses into verifiable checks. Most need a third-party API + key.
+## ✅ Hard signals (the differentiators)
 
 - [x] **URL / domain reputation** — domain age (RDAP) + heuristics (raw-IP, shorteners,
       risky TLDs, punycode, brand impersonation) fed into the verdict and shown in the card
   - [x] **Google Safe Browsing** — batched Lookup API v4, threat badges in card, CONFIRMED MALICIOUS in Claude prompt
   - [ ] Optional: urlscan.io / VirusTotal enrichment
 - [x] **Phone number intelligence** — libphonenumber-js parse/validate, line-type heuristics (premium-rate, VoIP, personal numbers), optional AbstractAPI carrier lookup; findings fed to Claude + shown in verdict card
-- [ ] **Email authenticity** — parse pasted headers for SPF/DKIM/DMARC + spoofing
+- [x] **Email authenticity** — parse pasted headers for SPF/DKIM/DMARC + brand impersonation detection; Gmail extension button auto-extracts email content for one-click analysis
 - [ ] **Crypto address check** — match wallet addresses against scam-report databases
 
-## ⬜ Mid-term — identity & media
+## ✅ Identity & media
 
-- [ ] **Reverse image / identity verification** (romance & catfish scams)
-  - [ ] Reverse image search on profile photos (TinEye / Vision / Bing Visual Search)
-  - [ ] AI-generated / deepfake face detection
-  - [ ] Combined "is this person real?" score
-- [ ] **Business legitimacy (UK)** — Companies House lookup, FCA register for investment firms
+- [x] **Reverse image / identity verification** (romance & catfish scams)
+  - [x] Reverse image search on profile photos (Google Cloud Vision web detection)
+  - [x] AI-generated / deepfake face detection (Sightengine + Claude visual analysis)
+  - [x] Combined "is this person real?" score (0–100 Real Score with verdict)
+- [x] **Business legitimacy (UK)** — Companies House lookup (company status, age, address) + FCA Financial Services Register check; dedicated "Check Company" tab with 0–100 legitimacy score
 
-## ⬜ Platform plays (longer term)
+## ✅ Community & platform
 
 - [x] **Community scam database** — `scam_reports` table keyed by domain/phone; "Report as scam" button after every verdict; community matches fed to Claude as STRONG evidence + shown in verdict card before other checks. Seeded from FCA Warning List + URLhaus via `scripts/seed-scam-db.mjs`
 - [x] **Passive browser protection** — content script runs on every page, skips known-safe domains, sends URL to background worker → /api/passive-check (community DB + heuristics + Safe Browsing, no Claude, no RDAP). Shadow DOM banner injected on suspicious/scam pages with dismiss + "Check with AI" link. Results cached 1h per domain.
+
+## ⬜ Platform plays (longer term)
+
 - [ ] **Public API / B2B** — let banks, marketplaces, dating apps embed ScamShield checks
 - [ ] **Mobile app** — call/SMS screening where scams actually land
 - [ ] **Multi-language support**

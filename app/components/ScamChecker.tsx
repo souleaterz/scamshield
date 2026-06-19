@@ -8,9 +8,11 @@ import {
   looksLikeEmailHeaders,
   type EmailHeaderAnalysis,
 } from "@/app/lib/emailHeaderParser";
+import type { CompanyCheckResult } from "@/app/lib/companyCheck";
 import VerdictCard from "@/app/components/VerdictCard";
 import PersonVerdictCard from "@/app/components/PersonVerdictCard";
 import EmailHeaderCard from "@/app/components/EmailHeaderCard";
+import CompanyVerdictCard from "@/app/components/CompanyVerdictCard";
 import ShareButton from "@/app/components/ShareButton";
 import PricingPlans from "@/app/components/PricingPlans";
 import AdSlot from "@/app/components/AdSlot";
@@ -52,7 +54,7 @@ function readImageFile(file: File): Promise<AttachedImage> {
   });
 }
 
-type Mode = "check" | "verify" | "email";
+type Mode = "check" | "verify" | "email" | "company";
 
 export default function ScamChecker({
   tier,
@@ -72,6 +74,8 @@ export default function ScamChecker({
   const [personResult, setPersonResult] = useState<PersonVerificationResult | null>(null);
   const [emailText, setEmailText] = useState("");
   const [emailAnalysis, setEmailAnalysis] = useState<EmailHeaderAnalysis | null>(null);
+  const [companyQuery, setCompanyQuery] = useState("");
+  const [companyResult, setCompanyResult] = useState<CompanyCheckResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [limitReached, setLimitReached] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -195,6 +199,8 @@ export default function ScamChecker({
     setPersonResult(null);
     setEmailText("");
     setEmailAnalysis(null);
+    setCompanyQuery("");
+    setCompanyResult(null);
     setError(null);
     setLimitReached(false);
     setReportState("idle");
@@ -241,6 +247,30 @@ export default function ScamChecker({
     setMode(next);
   }
 
+  async function handleCompanyCheck() {
+    const trimmed = companyQuery.trim();
+    if (!trimmed || loading) return;
+    setLoading(true);
+    setError(null);
+    setLimitReached(false);
+    setCompanyResult(null);
+    try {
+      const res = await fetch("/api/check-company", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: trimmed }),
+      });
+      const payload = await res.json();
+      if (res.status === 429) { setLimitReached(true); return; }
+      if (!res.ok) throw new Error(payload?.error ?? "Something went wrong.");
+      setCompanyResult(payload as CompanyCheckResult);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Something went wrong.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function handleVerify() {
     if (!image || loading) return;
     setLoading(true);
@@ -285,6 +315,7 @@ export default function ScamChecker({
               { id: "check", label: "Check Content" },
               { id: "email", label: "📧 Email Headers" },
               { id: "verify", label: "🕵️ Verify Photo" },
+              { id: "company", label: "🏢 Check Company" },
             ] as { id: Mode; label: string }[]
           ).map(({ id, label }) => (
             <button
@@ -297,7 +328,9 @@ export default function ScamChecker({
                     ? "border-b-2 border-violet-600 text-violet-600 bg-violet-50/50"
                     : id === "email"
                       ? "border-b-2 border-amber-500 text-amber-700 bg-amber-50/50"
-                      : "border-b-2 border-blue-600 text-blue-600 bg-blue-50/50"
+                      : id === "company"
+                        ? "border-b-2 border-emerald-600 text-emerald-700 bg-emerald-50/50"
+                        : "border-b-2 border-blue-600 text-blue-600 bg-blue-50/50"
                   : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
               }`}
             >
@@ -389,6 +422,38 @@ export default function ScamChecker({
                 className="rounded-lg bg-amber-500 px-5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-600 disabled:cursor-not-allowed disabled:bg-slate-300"
               >
                 {loading ? "Analysing…" : "Analyse email"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Company mode ── */}
+        {mode === "company" && (
+          <div className="p-4">
+            <p className="mb-3 text-sm text-slate-500">
+              Enter a UK company name, Companies House number (e.g. <strong>12345678</strong> or <strong>SC123456</strong>), or FCA Firm Reference Number to check if it&apos;s legitimate.
+            </p>
+            <input
+              type="text"
+              value={companyQuery}
+              onChange={(e) => setCompanyQuery(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") void handleCompanyCheck(); }}
+              placeholder="e.g. Acme Investments Ltd, 12345678, or FCA FRN 123456"
+              className="w-full rounded-lg border border-slate-200 bg-slate-50 p-3 text-slate-900 placeholder:text-slate-400 focus:border-emerald-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-100"
+            />
+            <div className="mt-3 flex justify-end gap-2">
+              {(companyQuery || companyResult) && (
+                <button type="button" onClick={reset} className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">
+                  Clear
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleCompanyCheck}
+                disabled={!companyQuery.trim() || loading}
+                className="rounded-lg bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+              >
+                {loading ? "Checking…" : "Check company"}
               </button>
             </div>
           </div>
@@ -522,7 +587,11 @@ export default function ScamChecker({
         <PersonVerdictCard result={personResult} />
       )}
 
-      {showAds && !verdict && !personResult && !limitReached && <AdSlot />}
+      {companyResult && (
+        <CompanyVerdictCard result={companyResult} />
+      )}
+
+      {showAds && !verdict && !personResult && !companyResult && !limitReached && <AdSlot />}
     </>
   );
 }
