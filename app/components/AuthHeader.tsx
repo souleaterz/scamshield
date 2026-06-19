@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Show, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
 import { isClerkConfigured } from "@/app/lib/auth";
 
@@ -23,6 +24,12 @@ export default function AuthHeader() {
         </SignUpButton>
       </Show>
       <Show when="signed-in">
+        <Link
+          href="/history"
+          className="text-sm font-medium text-slate-600 hover:text-slate-900"
+        >
+          History
+        </Link>
         <UserButton />
       </Show>
     </header>

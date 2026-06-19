@@ -27,7 +27,7 @@ Legend: ✅ done · 🚧 partial · ⬜ planned
 ## 🚧 Partial
 
 - [ ] **AdSense on free tier** — placeholder ad slot in place; real units pending account approval
-- [ ] **Verdict history** — usage metadata is stored; needs a UI for signed-in users
+- [x] **Verdict history** — `/history` page for signed-in users; shows last 50 checks with risk badge, type, summary, relative time
 
 ---
 
@@ -37,7 +37,7 @@ Turn subjective AI guesses into verifiable checks. Most need a third-party API +
 
 - [x] **URL / domain reputation** — domain age (RDAP) + heuristics (raw-IP, shorteners,
       risky TLDs, punycode, brand impersonation) fed into the verdict and shown in the card
-  - [ ] Add **Google Safe Browsing** (needs a free Google Cloud key) for known-bad URLs
+  - [x] **Google Safe Browsing** — batched Lookup API v4, threat badges in card, CONFIRMED MALICIOUS in Claude prompt
   - [ ] Optional: urlscan.io / VirusTotal enrichment
 - [ ] **Phone number intelligence** — format/carrier lookup + known-scam reputation
 - [ ] **Email authenticity** — parse pasted headers for SPF/DKIM/DMARC + spoofing
