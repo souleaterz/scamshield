@@ -1,7 +1,9 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import ScamChecker from "@/app/components/ScamChecker";
 import ExtensionCTA from "@/app/components/ExtensionCTA";
 import GuarduraiMascot from "@/app/components/GuarduraiMascot";
+import LatestScams from "@/app/components/LatestScams";
 import { getUserId, isClerkConfigured } from "@/app/lib/auth";
 import { getTierForUser } from "@/app/lib/subscription";
 
@@ -40,6 +42,10 @@ export default async function Home({
         clerkEnabled={isClerkConfigured()}
         justUpgraded={justUpgraded}
       />
+
+      <Suspense fallback={null}>
+        <LatestScams />
+      </Suspense>
 
       <footer className="mt-auto space-y-2 pt-6 text-center text-xs text-slate-400">
         <p>

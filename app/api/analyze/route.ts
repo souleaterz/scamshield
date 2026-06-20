@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
+import { after } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import {
   analyzeContent,
   type ImageMediaType,
   type Tier,
+  type Verdict,
 } from "@/app/lib/scamAnalysis";
 import { getUserId, getClientIp } from "@/app/lib/auth";
 import { checkRateLimit, recordCheck } from "@/app/lib/rateLimit";
@@ -11,6 +13,7 @@ import { getTierForUser } from "@/app/lib/subscription";
 import { checkUrlsInText, describeChecks } from "@/app/lib/urlReputation";
 import { checkPhonesInText, describePhoneChecks } from "@/app/lib/phoneReputation";
 import { lookupCommunityReports, describeCommunityReports } from "@/app/lib/communityReports";
+import { upsertEntitiesFromVerdict } from "@/app/lib/entityPages";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -135,12 +138,17 @@ export async function POST(request: Request) {
       summary: verdict.summary,
     });
 
-    return NextResponse.json({
+    const fullVerdict: Verdict = {
       ...verdict,
       link_checks: linkChecks,
       phone_checks: phoneChecks,
       community_reports: communityMatches,
-    });
+    };
+
+    // Persist entity pages after response is sent — non-blocking, best-effort.
+    after(() => void upsertEntitiesFromVerdict(fullVerdict));
+
+    return NextResponse.json(fullVerdict);
   } catch (err) {
     if (err instanceof Error && err.message.includes("ANTHROPIC_API_KEY")) {
       return NextResponse.json(

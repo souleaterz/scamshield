@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
+import { after } from "next/server";
 import { getUserId, getClientIp } from "@/app/lib/auth";
 import { checkRateLimit, recordCheck } from "@/app/lib/rateLimit";
 import { getTierForUser } from "@/app/lib/subscription";
 import { checkCompany } from "@/app/lib/companyCheck";
 import type { RiskLevel, Tier } from "@/app/lib/scamAnalysis";
+import { upsertEntityFromCompany } from "@/app/lib/entityPages";
 
 export const runtime = "nodejs";
 export const maxDuration = 20;
@@ -66,6 +68,9 @@ export async function POST(request: Request) {
       detectedType: "business check",
       summary,
     });
+
+    const riskLevel: RiskLevel = riskMap[result.verdict] ?? "suspicious";
+    after(() => void upsertEntityFromCompany(result, riskLevel));
 
     return NextResponse.json(result);
   } catch (err) {
