@@ -14,10 +14,10 @@ export default function ReportWithCommentForm({
   const [name, setName] = useState("");
   const [comment, setComment] = useState("");
   const [loading, setLoading] = useState(false);
-  const [entityUrls, setEntityUrls] = useState<string[]>([]);
+  const [entityUrls, setEntityUrls] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  if (phones.length === 0 && domains.length === 0) return null;
+  const hasEntities = phones.length > 0 || domains.length > 0;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -49,27 +49,34 @@ export default function ReportWithCommentForm({
   }
 
   // Success state
-  if (entityUrls.length > 0) {
+  if (entityUrls !== null) {
     return (
       <div className="rounded-xl border border-red-200 bg-red-50 p-4">
         <p className="text-sm font-semibold text-red-800">
-          ✓ Flagged and reported — thank you for helping protect others.
+          ✓ Thank you — your report has been recorded.
         </p>
-        <p className="mt-1 text-sm text-red-600">
-          Your report is now visible on the community page
-          {entityUrls.length === 1 ? "" : "s"}:
-        </p>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {entityUrls.map((url) => (
-            <Link
-              key={url}
-              href={url}
-              className="text-sm font-medium text-red-700 underline hover:text-red-900"
-            >
-              {url}
-            </Link>
-          ))}
-        </div>
+        {entityUrls.length > 0 ? (
+          <>
+            <p className="mt-1 text-sm text-red-600">
+              Your comment is now visible on the community page{entityUrls.length !== 1 ? "s" : ""} for these numbers/sites:
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {entityUrls.map((url) => (
+                <Link
+                  key={url}
+                  href={url}
+                  className="text-sm font-medium text-red-700 underline hover:text-red-900"
+                >
+                  {url}
+                </Link>
+              ))}
+            </div>
+          </>
+        ) : (
+          <p className="mt-1 text-sm text-red-600">
+            Your feedback will help improve future verdicts.
+          </p>
+        )}
       </div>
     );
   }

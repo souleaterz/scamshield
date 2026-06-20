@@ -32,13 +32,6 @@ export async function POST(request: Request) {
     ? (domains as unknown[]).filter((d): d is string => typeof d === "string")
     : [];
 
-  if (phoneList.length === 0 && domainList.length === 0) {
-    return NextResponse.json(
-      { error: "No phones or domains to flag." },
-      { status: 400 },
-    );
-  }
-
   const commentText =
     typeof comment === "string" ? comment.trim() : "";
   if (commentText.length < 10) {
