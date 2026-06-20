@@ -74,6 +74,30 @@ async function upsertEntityPage(
   return (data as string | null) ?? null;
 }
 
+/**
+ * Flags an entity as a scam (user-initiated). Inserts the entity page if new,
+ * or upgrades its risk_level without touching the existing AI verdict.
+ * Returns the entity page UUID so a comment can be attached.
+ */
+export async function flagEntityPage(
+  type: EntityType,
+  slug: string,
+  displayName: string,
+): Promise<string | null> {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return null;
+  const { data, error } = await supabase.rpc("flag_entity_page", {
+    p_type: type,
+    p_slug: slug,
+    p_display_name: displayName,
+  });
+  if (error) {
+    console.error("[entity] flag failed:", error.message);
+    return null;
+  }
+  return (data as string | null) ?? null;
+}
+
 export interface RedditPost {
   title: string;
   selftext: string;

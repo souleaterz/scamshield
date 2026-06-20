@@ -51,6 +51,38 @@ end;
 $$;
 
 
+-- Flag an entity page as a scam (created by user disagreeing with AI verdict).
+-- Inserts if new, or upgrades risk level without overwriting the AI verdict.
+create or replace function public.flag_entity_page(
+  p_type         text,
+  p_slug         text,
+  p_display_name text
+) returns uuid language plpgsql security definer as $$
+declare
+  v_id uuid;
+begin
+  insert into public.entity_pages (entity_type, slug, display_name, risk_level, latest_verdict)
+  values (
+    p_type,
+    p_slug,
+    p_display_name,
+    'likely_scam',
+    '{"source":"user_flag","summary":"Flagged as a scam by Guardurai users","risk_level":"likely_scam","red_flags":[],"advice":["Do not engage with this number or website","Report to Action Fraud (UK) at actionfraud.police.uk"]}'::jsonb
+  )
+  on conflict on constraint entity_pages_unique
+  do update set
+    risk_level      = case
+                        when entity_pages.risk_level in ('safe', 'suspicious') then 'likely_scam'
+                        else entity_pages.risk_level
+                      end,
+    check_count     = entity_pages.check_count + 1,
+    last_checked_at = now()
+  returning id into v_id;
+  return v_id;
+end;
+$$;
+
+
 -- Community comments / experience reports on entity pages.
 create table if not exists public.entity_comments (
   id            uuid primary key default gen_random_uuid(),
