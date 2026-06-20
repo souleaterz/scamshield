@@ -18,8 +18,13 @@ function extractIdentifiers(text: string): { type: "domain" | "phone"; value: st
   const domains = [...new Set(urls.map(normalizeDomain))];
   for (const d of domains) items.push({ type: "domain", value: d });
 
-  const phones = findNumbers(text, { defaultCountry: "GB", v2: true }).slice(0, 2);
-  for (const { number } of phones) items.push({ type: "phone", value: number.format("E.164") });
+  const seen = new Set<string>();
+  for (const country of ["GB", "US", "CA", "AU", "IN", "NG", "ZA"] as const) {
+    for (const { number } of findNumbers(text, { defaultCountry: country, v2: true })) {
+      const e164 = number.format("E.164");
+      if (!seen.has(e164)) { seen.add(e164); items.push({ type: "phone", value: e164 }); }
+    }
+  }
 
   return items;
 }

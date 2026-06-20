@@ -130,10 +130,29 @@ async function ipqsLookup(e164: string): Promise<IpqsResult> {
   }
 }
 
-/** Find and check phone numbers in text (up to 2). */
+/**
+ * Find phone numbers in text trying multiple country defaults so that
+ * local-format numbers from any major country are detected, not just UK.
+ * Deduplicates by E.164 — the first parse wins for position metadata.
+ */
+function findPhoneNumbers(text: string) {
+  const seen = new Set<string>();
+  const results: ReturnType<typeof findNumbers> = [];
+  for (const country of ["GB", "US", "CA", "AU", "IN", "NG", "ZA"] as const) {
+    for (const match of findNumbers(text, { defaultCountry: country, v2: true })) {
+      const e164 = match.number.format("E.164");
+      if (!seen.has(e164)) {
+        seen.add(e164);
+        results.push(match);
+      }
+    }
+  }
+  return results;
+}
+
+/** Find and check phone numbers in text (up to 3). */
 export async function checkPhonesInText(text: string): Promise<PhoneCheck[]> {
-  // v2:true returns NumberFound (with PhoneNumber object); GB default parses UK-local numbers.
-  const found = findNumbers(text, { defaultCountry: "GB", v2: true }).slice(0, 2);
+  const found = findPhoneNumbers(text).slice(0, 3);
   if (found.length === 0) return [];
 
   return Promise.all(
