@@ -57,22 +57,99 @@ async function upsertEntityPage(
   displayName: string,
   riskLevel: RiskLevel | null,
   verdictData: unknown,
-): Promise<void> {
+): Promise<string | null> {
   const supabase = getSupabaseAdmin();
-  if (!supabase) return;
-  const { error } = await supabase.rpc("upsert_entity_page", {
+  if (!supabase) return null;
+  const { data, error } = await supabase.rpc("upsert_entity_page", {
     p_type: type,
     p_slug: slug,
     p_display_name: displayName,
     p_risk_level: riskLevel ?? null,
     p_verdict: verdictData,
   });
-  if (error) console.error("[entity] upsert failed:", error.message);
+  if (error) {
+    console.error("[entity] upsert failed:", error.message);
+    return null;
+  }
+  return (data as string | null) ?? null;
+}
+
+export interface RedditPost {
+  title: string;
+  selftext: string;
+  author: string;
+  permalink: string;
+  subreddit: string;
+}
+
+/**
+ * Creates or updates an entity page from a Reddit post.
+ * Returns the entity page UUID so a comment can be attached.
+ */
+export async function upsertEntityPageFromReddit(
+  type: EntityType,
+  slug: string,
+  displayName: string,
+  riskLevel: RiskLevel,
+  post: RedditPost,
+): Promise<string | null> {
+  const verdictData = {
+    source: "reddit",
+    subreddit: post.subreddit,
+    summary: `Reported on Reddit r/${post.subreddit}: "${post.title}"`,
+    risk_level: riskLevel,
+    red_flags: [],
+    advice: [
+      "Do not engage with this number or website",
+      "Report to Action Fraud (UK: actionfraud.police.uk) or the FTC (US: reportfraud.ftc.gov)",
+    ],
+  };
+  return upsertEntityPage(type, slug, displayName, riskLevel, verdictData);
+}
+
+/**
+ * Attaches a Reddit post as a community comment on an entity page.
+ * Uses the permalink as a dedup key so re-runs never double-post.
+ */
+export async function insertRedditComment(
+  entityId: string,
+  post: RedditPost,
+): Promise<void> {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return;
+
+  const dedupKey = `reddit:${post.permalink}`;
+
+  // Skip if this post was already imported for this entity
+  const { count } = await supabase
+    .from("entity_comments")
+    .select("*", { count: "exact", head: true })
+    .eq("entity_id", entityId)
+    .eq("commenter_ip", dedupKey);
+  if ((count ?? 0) > 0) return;
+
+  const text = [post.title, post.selftext].filter(Boolean).join("\n\n").trim();
+  if (text.length < 10) return;
+
+  const author =
+    post.author && post.author !== "[deleted]" && post.author !== "AutoModerator"
+      ? `Reddit u/${post.author}`
+      : "Reddit user";
+
+  const { error } = await supabase.from("entity_comments").insert({
+    entity_id: entityId,
+    user_id: null,
+    author_name: author,
+    body: text.slice(0, 500),
+    commenter_ip: dedupKey,
+    is_flagged: false,
+  });
+  if (error) console.error("[entity] reddit comment insert failed:", error.message);
 }
 
 /** Called after /api/analyze returns. Fire-and-forget via next/server `after`. */
 export async function upsertEntitiesFromVerdict(verdict: Verdict): Promise<void> {
-  const tasks: Promise<void>[] = [];
+  const tasks: Promise<unknown>[] = [];
 
   for (const check of verdict.link_checks ?? []) {
     tasks.push(
