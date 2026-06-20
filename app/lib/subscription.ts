@@ -3,7 +3,7 @@ import { getSupabaseAdmin } from "@/app/lib/supabase";
 import { tierForPriceId } from "@/app/lib/stripe";
 import type { Tier } from "@/app/lib/scamAnalysis";
 
-const VALID_TIERS: Tier[] = ["free", "pro", "unlimited"];
+const VALID_TIERS: Tier[] = ["free", "pro"];
 
 /** Subscription period end lives on the sub or its item depending on API version. */
 function readPeriodEnd(sub: Stripe.Subscription): number | null {

@@ -46,18 +46,22 @@ npm run dev
 
 # Phase 3 — subscriptions (Stripe)
 
-Stripe powers the Pro (£4.99/mo) and Unlimited (£9.99/mo) plans. Like everything
+Stripe powers the Pro plan — **3-day free trial, then £4.99/mo**. Like everything
 else it's optional: **until `STRIPE_SECRET_KEY` is set, the upgrade buttons return a
 clean "not available yet" and everyone stays on free.** Requires Clerk (only signed-in
 users can subscribe) and Supabase (the `subscriptions` table stores each user's tier).
 
+The 3-day trial is handled entirely by the checkout code (`subscription_data.trial_period_days: 3`)
+— no special Stripe product config needed. Stripe collects a payment method upfront
+but charges nothing until the trial ends. The webhook handles `trialing` status and
+grants full Pro access during the trial period.
+
 ## 1. Create products + prices
 
 1. Create an account at https://stripe.com and stay in **Test mode** (toggle, top right).
-2. **Product catalogue → Add product**, create two recurring products:
+2. **Product catalogue → Add product**, create one recurring product:
    - **Pro** — recurring, £4.99 / month
-   - **Unlimited** — recurring, £9.99 / month
-3. Copy each price's **Price ID** (`price_...`) → `STRIPE_PRICE_PRO` / `STRIPE_PRICE_UNLIMITED`.
+3. Copy the price's **Price ID** (`price_...`) → `STRIPE_PRICE_PRO`.
 
 ## 2. API key
 
@@ -70,7 +74,7 @@ also creates the `subscriptions` table (safe to re-run; uses `create table if no
 
 ## 4. Webhook (keeps tiers in sync)
 
-The webhook flips a user to Pro/Unlimited after payment and back to free on cancel.
+The webhook flips a user to Pro after payment (or when a trial starts) and back to free on cancel.
 
 **Local testing** — install the Stripe CLI, then:
 ```bash
@@ -88,9 +92,9 @@ The CLI prints a signing secret (`whsec_...`) → put it in `STRIPE_WEBHOOK_SECR
 ## 5. Test the flow
 
 With all keys set + `stripe listen` running: sign in, hit your daily limit (or click an
-upgrade button), and pay with Stripe's test card **`4242 4242 4242 4242`** (any future
-expiry/CVC). You should land back on the app upgraded, and your tier should be `pro`/
-`unlimited` in the `subscriptions` table.
+upgrade button), and enter Stripe's test card **`4242 4242 4242 4242`** (any future
+expiry/CVC). You should land back on the app in trial/Pro mode, and your tier should be
+`pro` with status `trialing` in the `subscriptions` table.
 
 ---
 
@@ -110,7 +114,6 @@ CLERK_SECRET_KEY=sk_...
 # Stripe (optional — enables upgrades)
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_PRICE_PRO=price_...
-STRIPE_PRICE_UNLIMITED=price_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```

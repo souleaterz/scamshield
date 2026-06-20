@@ -28,8 +28,8 @@ create table if not exists public.subscriptions (
   user_id                text primary key,            -- Clerk user ID
   stripe_customer_id     text,
   stripe_subscription_id text,
-  tier                   text not null default 'free' -- 'free' | 'pro' | 'unlimited'
-                           check (tier in ('free', 'pro', 'unlimited')),
+  tier                   text not null default 'free' -- 'free' | 'pro'
+                           check (tier in ('free', 'pro')),
   status                 text,                         -- Stripe subscription status
   current_period_end     timestamptz,
   updated_at             timestamptz not null default now()

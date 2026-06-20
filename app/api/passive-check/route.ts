@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { checkUrlsInText } from "@/app/lib/urlReputation";
 import { lookupCommunityReports } from "@/app/lib/communityReports";
+import { getUserId } from "@/app/lib/auth";
+import { getTierForUser } from "@/app/lib/subscription";
 
 export const runtime = "nodejs";
 export const maxDuration = 10;
@@ -16,6 +18,13 @@ export async function POST(request: Request) {
   const { url } = (body ?? {}) as { url?: unknown };
   if (typeof url !== "string" || !url.startsWith("http")) {
     return NextResponse.json({ riskLevel: "safe" });
+  }
+
+  // Real-time page scanning is a Pro feature.
+  const userId = await getUserId();
+  const tier = await getTierForUser(userId);
+  if (tier !== "pro") {
+    return NextResponse.json({ riskLevel: "safe", requiresPro: true });
   }
 
   // Hard-signal checks only — no Claude, no RDAP. Target latency < 600ms.

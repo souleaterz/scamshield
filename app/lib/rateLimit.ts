@@ -1,11 +1,10 @@
 import { getSupabaseAdmin } from "@/app/lib/supabase";
 import type { RiskLevel, Tier } from "@/app/lib/scamAnalysis";
 
-/** Daily check allowance per identifier, by tier. Infinity = unmetered. */
+/** Daily check allowance per identifier, by tier. */
 export const DAILY_LIMITS: Record<Tier, number> = {
   free: 1,
   pro: 200,
-  unlimited: Infinity,
 };
 
 export interface RateLimitResult {

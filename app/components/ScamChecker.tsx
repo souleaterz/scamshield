@@ -20,7 +20,7 @@ import ManageBilling from "@/app/components/ManageBilling";
 
 interface AttachedImage {
   media_type: ImageMediaType;
-  data: string; // base64 without data-URL prefix
+  data: string;
   previewUrl: string;
   name: string;
 }
@@ -54,7 +54,7 @@ function readImageFile(file: File): Promise<AttachedImage> {
   });
 }
 
-type Mode = "check" | "verify" | "email" | "company";
+type Mode = "check" | "company";
 
 export default function ScamChecker({
   tier,
@@ -72,7 +72,6 @@ export default function ScamChecker({
   const [image, setImage] = useState<AttachedImage | null>(null);
   const [verdict, setVerdict] = useState<Verdict | null>(null);
   const [personResult, setPersonResult] = useState<PersonVerificationResult | null>(null);
-  const [emailText, setEmailText] = useState("");
   const [emailAnalysis, setEmailAnalysis] = useState<EmailHeaderAnalysis | null>(null);
   const [companyQuery, setCompanyQuery] = useState("");
   const [companyResult, setCompanyResult] = useState<CompanyCheckResult | null>(null);
@@ -82,12 +81,14 @@ export default function ScamChecker({
   const [dragging, setDragging] = useState(false);
   const [reportState, setReportState] = useState<"idle" | "working" | "done">("idle");
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const verifyInputRef = useRef<HTMLInputElement>(null);
 
   const showAds = tier === "free";
 
-  // Show a full verdict passed in via the URL hash (e.g. "Open full result"
-  // from the browser extension), without re-running the check.
+  // Auto-detect email headers live as the user types
+  const headersDetected =
+    text.length > 60 && looksLikeEmailHeaders(text.trim());
+
+  // Show a verdict passed in via the URL hash (e.g. "Open full result" from the extension).
   useEffect(() => {
     if (typeof window === "undefined") return;
     const match = window.location.hash.match(/(?:^#|&)r=([^&]+)/);
@@ -101,7 +102,6 @@ export default function ScamChecker({
     } catch {
       /* malformed hash — ignore */
     }
-    // Tidy the URL so a refresh doesn't re-trigger it.
     window.history.replaceState(
       null,
       "",
@@ -146,15 +146,28 @@ export default function ScamChecker({
     setError(null);
     setLimitReached(false);
     setVerdict(null);
+    setPersonResult(null);
+    setEmailAnalysis(null);
+
+    const trimmed = text.trim();
+
+    // Auto-detect and parse email headers — instant, no API cost
+    const analysis =
+      trimmed && looksLikeEmailHeaders(trimmed)
+        ? parseEmailHeaders(trimmed)
+        : null;
+    if (analysis) setEmailAnalysis(analysis);
+
     try {
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          text: text.trim() || undefined,
+          text: trimmed || undefined,
           image: image
             ? { media_type: image.media_type, data: image.data }
             : undefined,
+          emailContext: analysis?.signals,
         }),
       });
       const payload = await res.json();
@@ -166,6 +179,34 @@ export default function ScamChecker({
         throw new Error(payload?.error ?? "Something went wrong.");
       }
       setVerdict(payload as Verdict);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Something went wrong.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleVerify() {
+    if (!image || loading) return;
+    setLoading(true);
+    setError(null);
+    setLimitReached(false);
+    setVerdict(null);
+    setPersonResult(null);
+    setEmailAnalysis(null);
+    try {
+      const res = await fetch("/api/verify-person", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: { media_type: image.media_type, data: image.data } }),
+      });
+      const payload = await res.json();
+      if (res.status === 429) {
+        setLimitReached(true);
+        return;
+      }
+      if (!res.ok) throw new Error(payload?.error ?? "Something went wrong.");
+      setPersonResult(payload as PersonVerificationResult);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong.");
     } finally {
@@ -197,49 +238,12 @@ export default function ScamChecker({
     setImage(null);
     setVerdict(null);
     setPersonResult(null);
-    setEmailText("");
     setEmailAnalysis(null);
     setCompanyQuery("");
     setCompanyResult(null);
     setError(null);
     setLimitReached(false);
     setReportState("idle");
-  }
-
-  async function handleEmailSubmit() {
-    const trimmed = emailText.trim();
-    if (!trimmed || loading) return;
-    setLoading(true);
-    setError(null);
-    setLimitReached(false);
-    setVerdict(null);
-    setEmailAnalysis(null);
-
-    // Parse headers client-side first (instant, no API cost)
-    const analysis = looksLikeEmailHeaders(trimmed)
-      ? parseEmailHeaders(trimmed)
-      : null;
-    setEmailAnalysis(analysis);
-
-    try {
-      const res = await fetch("/api/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text: trimmed,
-          // Prepend the hard parsed signals so Claude sees auth results
-          emailContext: analysis?.signals,
-        }),
-      });
-      const payload = await res.json();
-      if (res.status === 429) { setLimitReached(true); return; }
-      if (!res.ok) throw new Error(payload?.error ?? "Something went wrong.");
-      setVerdict(payload as Verdict);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong.");
-    } finally {
-      setLoading(false);
-    }
   }
 
   function switchMode(next: Mode) {
@@ -271,32 +275,6 @@ export default function ScamChecker({
     }
   }
 
-  async function handleVerify() {
-    if (!image || loading) return;
-    setLoading(true);
-    setError(null);
-    setLimitReached(false);
-    setPersonResult(null);
-    try {
-      const res = await fetch("/api/verify-person", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: { media_type: image.media_type, data: image.data } }),
-      });
-      const payload = await res.json();
-      if (res.status === 429) {
-        setLimitReached(true);
-        return;
-      }
-      if (!res.ok) throw new Error(payload?.error ?? "Something went wrong.");
-      setPersonResult(payload as PersonVerificationResult);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
   return (
     <>
       {tier !== "free" && <ManageBilling />}
@@ -309,12 +287,10 @@ export default function ScamChecker({
 
       {/* Mode tabs */}
       <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-        <div className="flex border-b border-slate-200 overflow-x-auto">
+        <div className="flex border-b border-slate-200">
           {(
             [
-              { id: "check", label: "Check Content" },
-              { id: "email", label: "📧 Email Headers" },
-              { id: "verify", label: "🕵️ Verify Photo" },
+              { id: "check", label: "🛡️ Check Anything" },
               { id: "company", label: "🏢 Check Company" },
             ] as { id: Mode; label: string }[]
           ).map(({ id, label }) => (
@@ -324,13 +300,9 @@ export default function ScamChecker({
               onClick={() => switchMode(id)}
               className={`flex-1 whitespace-nowrap px-4 py-3 text-sm font-semibold transition-colors ${
                 mode === id
-                  ? id === "verify"
-                    ? "border-b-2 border-violet-600 text-violet-600 bg-violet-50/50"
-                    : id === "email"
-                      ? "border-b-2 border-amber-500 text-amber-700 bg-amber-50/50"
-                      : id === "company"
-                        ? "border-b-2 border-emerald-600 text-emerald-700 bg-emerald-50/50"
-                        : "border-b-2 border-blue-600 text-blue-600 bg-blue-50/50"
+                  ? id === "company"
+                    ? "border-b-2 border-emerald-600 text-emerald-700 bg-emerald-50/50"
+                    : "border-b-2 border-blue-600 text-blue-600 bg-blue-50/50"
                   : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
               }`}
             >
@@ -339,7 +311,7 @@ export default function ScamChecker({
           ))}
         </div>
 
-        {/* ── Check mode ── */}
+        {/* ── Check Anything mode ── */}
         {mode === "check" && (
           <div
             onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
@@ -351,10 +323,18 @@ export default function ScamChecker({
               value={text}
               onChange={(e) => setText(e.target.value)}
               onPaste={handlePaste}
-              placeholder="Paste the suspicious text, link, or phone number here…"
+              placeholder="Paste anything suspicious — a message, link, phone number, or even full email headers…"
               rows={6}
               className="w-full resize-none rounded-lg border border-slate-200 bg-slate-50 p-3 text-slate-900 placeholder:text-slate-400 focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100"
             />
+
+            {/* Email headers auto-detected badge */}
+            {headersDetected && (
+              <div className="mt-2 flex items-center gap-1.5 text-xs font-medium text-amber-700">
+                <span aria-hidden>📧</span>
+                Email headers detected — authentication analysis will run automatically
+              </div>
+            )}
 
             {image && (
               <div className="mt-3 flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-2">
@@ -375,11 +355,28 @@ export default function ScamChecker({
               >
                 + Add screenshot or image
               </button>
-              <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/gif,image/webp" className="hidden" onChange={(e) => void handleFiles(e.target.files)} />
-              <div className="flex gap-2">
-                {(text || image || verdict) && (
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/gif,image/webp"
+                className="hidden"
+                onChange={(e) => void handleFiles(e.target.files)}
+              />
+              <div className="flex flex-wrap gap-2">
+                {(text || image || verdict || personResult) && (
                   <button type="button" onClick={reset} className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">
                     Clear
+                  </button>
+                )}
+                {/* Show "Verify this person" only when an image is attached */}
+                {image && (
+                  <button
+                    type="button"
+                    onClick={handleVerify}
+                    disabled={loading}
+                    className="rounded-lg border border-violet-200 bg-violet-50 px-4 py-2 text-sm font-semibold text-violet-700 shadow-sm transition-colors hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {loading ? "Analysing…" : "🕵️ Verify this person"}
                   </button>
                 )}
                 <button
@@ -392,38 +389,13 @@ export default function ScamChecker({
                 </button>
               </div>
             </div>
-          </div>
-        )}
 
-        {/* ── Email Headers mode ── */}
-        {mode === "email" && (
-          <div className="p-4">
-            <p className="mb-3 text-sm text-slate-500">
-              Paste the <strong>full email source</strong> or just the raw headers to check for spoofing, phishing, and authentication failures.
-              In Gmail: open the email → More options (⋮) → <strong>Show original</strong> → copy everything.
-            </p>
-            <textarea
-              value={emailText}
-              onChange={(e) => setEmailText(e.target.value)}
-              placeholder={"Received: from mail.example.com...\nAuthentication-Results: ...\nFrom: Support <support@suspicious-domain.com>\nSubject: Your account has been compromised\n..."}
-              rows={8}
-              className="w-full resize-none rounded-lg border border-slate-200 bg-slate-50 p-3 font-mono text-xs text-slate-800 placeholder:text-slate-400 focus:border-amber-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-100"
-            />
-            <div className="mt-3 flex justify-end gap-2">
-              {(emailText || verdict || emailAnalysis) && (
-                <button type="button" onClick={reset} className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">
-                  Clear
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={handleEmailSubmit}
-                disabled={!emailText.trim() || loading}
-                className="rounded-lg bg-amber-500 px-5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-600 disabled:cursor-not-allowed disabled:bg-slate-300"
-              >
-                {loading ? "Analysing…" : "Analyse email"}
-              </button>
-            </div>
+            {/* Hint when only image is attached and no text */}
+            {image && !text && (
+              <p className="mt-2 text-xs text-slate-400">
+                Use <span className="font-medium">Check for scams</span> to analyse the image content, or <span className="font-medium">Verify this person</span> to check if it&apos;s a real person (profile photos).
+              </p>
+            )}
           </div>
         )}
 
@@ -454,69 +426,6 @@ export default function ScamChecker({
                 className="rounded-lg bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300"
               >
                 {loading ? "Checking…" : "Check company"}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ── Verify mode ── */}
-        {mode === "verify" && (
-          <div className="p-4">
-            <p className="mb-4 text-sm text-slate-500">
-              Upload a profile photo to check if it&apos;s a real person — we run reverse image search, AI-generation detection, and visual analysis.
-            </p>
-
-            {!image ? (
-              <button
-                type="button"
-                onClick={() => verifyInputRef.current?.click()}
-                onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-                onDragLeave={() => setDragging(false)}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  setDragging(false);
-                  void handleFiles(e.dataTransfer.files);
-                }}
-                className={`flex w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed py-10 transition-colors ${
-                  dragging
-                    ? "border-violet-400 bg-violet-50"
-                    : "border-slate-200 bg-slate-50 hover:border-violet-300 hover:bg-violet-50/40"
-                }`}
-              >
-                <span className="text-3xl">🖼️</span>
-                <span className="text-sm font-medium text-slate-600">
-                  Drop a profile photo here, or click to upload
-                </span>
-                <span className="text-xs text-slate-400">JPEG, PNG, WebP, GIF · max ~5 MB</span>
-              </button>
-            ) : (
-              <div className="flex items-center gap-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={image.previewUrl} alt={image.name} className="h-20 w-20 rounded-lg object-cover" />
-                <div className="flex-1 min-w-0">
-                  <p className="truncate text-sm font-medium text-slate-700">{image.name}</p>
-                  <button type="button" onClick={() => setImage(null)} className="mt-1 text-xs text-slate-400 hover:text-slate-600">
-                    Remove
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <input ref={verifyInputRef} type="file" accept="image/png,image/jpeg,image/gif,image/webp" className="hidden" onChange={(e) => void handleFiles(e.target.files)} />
-
-            <div className="mt-3 flex justify-end gap-2">
-              {(image || personResult) && (
-                <button type="button" onClick={reset} className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">
-                  Clear
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={handleVerify}
-                disabled={!image || loading}
-                className="rounded-lg bg-violet-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-violet-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-              >
-                {loading ? "Analysing…" : "Verify this photo"}
               </button>
             </div>
           </div>

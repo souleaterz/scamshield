@@ -85,6 +85,10 @@ export async function POST(request: Request) {
     client_reference_id: userId,
     metadata: { userId, tier: body.tier },
     allow_promotion_codes: true,
+    subscription_data: {
+      trial_period_days: 3,
+      metadata: { userId, tier: body.tier },
+    },
     success_url: `${origin}/?upgraded=1`,
     cancel_url: `${origin}/?canceled=1`,
   });

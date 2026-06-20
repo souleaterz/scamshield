@@ -1,5 +1,7 @@
 import Link from "next/link";
 import ScamChecker from "@/app/components/ScamChecker";
+import ExtensionCTA from "@/app/components/ExtensionCTA";
+import GuarduraiMascot from "@/app/components/GuarduraiMascot";
 import { getUserId, isClerkConfigured } from "@/app/lib/auth";
 import { getTierForUser } from "@/app/lib/subscription";
 
@@ -13,21 +15,24 @@ export default async function Home({
   const justUpgraded = (await searchParams).upgraded === "1";
 
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-8 px-4 py-12 sm:py-16">
-      <header className="text-center">
-        <div className="flex items-center justify-center gap-2">
-          <span className="text-2xl" aria-hidden>
-            🛡️
-          </span>
+    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-10 sm:py-14">
+      <header className="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-center sm:gap-6 sm:text-left">
+        <GuarduraiMascot size={96} />
+        <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">
             Guardurai
           </h1>
+          <p className="mt-1 text-slate-600">
+            Paste anything — a message, a link, a phone number, or a screenshot —
+            and find out if it&apos;s a scam.
+          </p>
+          <p className="mt-1 text-xs text-slate-400">
+            Email headers? Profile photos? UK companies? All in one place.
+          </p>
         </div>
-        <p className="mt-2 text-slate-600">
-          Paste anything — a message, a link, a phone number, or a screenshot —
-          and find out if it&apos;s a scam.
-        </p>
       </header>
+
+      <ExtensionCTA />
 
       <ScamChecker
         tier={tier}
