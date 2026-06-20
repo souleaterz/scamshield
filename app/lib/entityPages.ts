@@ -140,6 +140,42 @@ export async function getCommentsForEntity(
   return (data ?? []) as EntityComment[];
 }
 
+/**
+ * Look up how many times this entity has been flagged in scam_reports.
+ * Phones: slug "447911123456" → look up E.164 "+447911123456".
+ * Domains: slug is the bare domain.
+ * Companies: not in scam_reports yet, returns 0.
+ */
+export async function getScamReportCount(
+  type: EntityType,
+  slug: string,
+): Promise<number> {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return 0;
+
+  let inputType: string;
+  let inputValue: string;
+
+  if (type === "phone") {
+    inputType = "phone";
+    inputValue = `+${slug}`;
+  } else if (type === "domain") {
+    inputType = "domain";
+    inputValue = slug;
+  } else {
+    return 0;
+  }
+
+  const { data } = await supabase
+    .from("scam_reports")
+    .select("report_count")
+    .eq("input_type", inputType)
+    .eq("input_value", inputValue)
+    .maybeSingle();
+
+  return (data?.report_count as number | null) ?? 0;
+}
+
 async function _getRecentRiskyEntities(): Promise<EntityPage[]> {
   const supabase = getSupabaseAdmin();
   if (!supabase) return [];

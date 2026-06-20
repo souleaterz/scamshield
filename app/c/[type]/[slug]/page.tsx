@@ -4,9 +4,12 @@ import type { Metadata } from "next";
 import {
   getEntityPage,
   getCommentsForEntity,
+  getScamReportCount,
 } from "@/app/lib/entityPages";
 import type { EntityType } from "@/app/lib/entityPages";
+import { communityRiskLevel } from "@/app/lib/communityReports";
 import CommentForm from "@/app/components/CommentForm";
+import FlagAsScamButton from "@/app/components/FlagAsScamButton";
 import type { RiskLevel, Verdict } from "@/app/lib/scamAnalysis";
 import type { CompanyCheckResult } from "@/app/lib/companyCheck";
 
@@ -65,11 +68,15 @@ function VerdictDisplay({ verdict }: { verdict: Verdict }) {
       )}
       {verdict.red_flags && verdict.red_flags.length > 0 && (
         <div>
-          <h3 className="mb-2 text-sm font-semibold text-slate-900">Red flags</h3>
+          <h3 className="mb-2 text-sm font-semibold text-slate-900">
+            Red flags
+          </h3>
           <ul className="space-y-1">
             {verdict.red_flags.map((flag, i) => (
               <li key={i} className="flex gap-2 text-sm text-slate-700">
-                <span className="mt-0.5 shrink-0 text-red-500" aria-hidden>⚠</span>
+                <span className="mt-0.5 shrink-0 text-red-500" aria-hidden>
+                  ⚠
+                </span>
                 {flag}
               </li>
             ))}
@@ -78,11 +85,15 @@ function VerdictDisplay({ verdict }: { verdict: Verdict }) {
       )}
       {verdict.advice && verdict.advice.length > 0 && (
         <div>
-          <h3 className="mb-2 text-sm font-semibold text-slate-900">What to do</h3>
+          <h3 className="mb-2 text-sm font-semibold text-slate-900">
+            What to do
+          </h3>
           <ul className="space-y-1">
             {verdict.advice.map((step, i) => (
               <li key={i} className="flex gap-2 text-sm text-slate-700">
-                <span className="mt-0.5 shrink-0 text-blue-500" aria-hidden>→</span>
+                <span className="mt-0.5 shrink-0 text-blue-500" aria-hidden>
+                  →
+                </span>
                 {step}
               </li>
             ))}
@@ -146,11 +157,15 @@ function CompanyDisplay({ result }: { result: CompanyCheckResult }) {
 
       {result.flags.length > 0 && (
         <div>
-          <h3 className="mb-2 text-sm font-semibold text-slate-900">Concerns</h3>
+          <h3 className="mb-2 text-sm font-semibold text-slate-900">
+            Concerns
+          </h3>
           <ul className="space-y-1">
             {result.flags.map((flag, i) => (
               <li key={i} className="flex gap-2 text-sm text-slate-700">
-                <span className="mt-0.5 shrink-0 text-red-500" aria-hidden>⚠</span>
+                <span className="mt-0.5 shrink-0 text-red-500" aria-hidden>
+                  ⚠
+                </span>
                 {flag}
               </li>
             ))}
@@ -166,7 +181,12 @@ function CompanyDisplay({ result }: { result: CompanyCheckResult }) {
           <ul className="space-y-1">
             {result.positives.map((pos, i) => (
               <li key={i} className="flex gap-2 text-sm text-slate-700">
-                <span className="mt-0.5 shrink-0 text-emerald-500" aria-hidden>✓</span>
+                <span
+                  className="mt-0.5 shrink-0 text-emerald-500"
+                  aria-hidden
+                >
+                  ✓
+                </span>
                 {pos}
               </li>
             ))}
@@ -176,11 +196,15 @@ function CompanyDisplay({ result }: { result: CompanyCheckResult }) {
 
       {result.advice.length > 0 && (
         <div>
-          <h3 className="mb-2 text-sm font-semibold text-slate-900">What to do</h3>
+          <h3 className="mb-2 text-sm font-semibold text-slate-900">
+            What to do
+          </h3>
           <ul className="space-y-1">
             {result.advice.map((step, i) => (
               <li key={i} className="flex gap-2 text-sm text-slate-700">
-                <span className="mt-0.5 shrink-0 text-blue-500" aria-hidden>→</span>
+                <span className="mt-0.5 shrink-0 text-blue-500" aria-hidden>
+                  →
+                </span>
                 {step}
               </li>
             ))}
@@ -200,7 +224,9 @@ export async function generateMetadata({
   const entity = await getEntityPage(type, slug);
   if (!entity) return { title: "Not found — Guardurai" };
 
-  const riskLabel = entity.risk_level ? RISK_LABEL[entity.risk_level] : "Checked";
+  const riskLabel = entity.risk_level
+    ? RISK_LABEL[entity.risk_level]
+    : "Checked";
   return {
     title: `${entity.display_name} — ${riskLabel} | Guardurai`,
     description: `Community scam report for ${entity.display_name}. Checked ${entity.check_count} time${entity.check_count !== 1 ? "s" : ""} on Guardurai. See verdict, red flags, and community comments.`,
@@ -215,12 +241,26 @@ export default async function EntityPage({
   const { type, slug } = await params;
   if (!VALID_TYPES.includes(type)) notFound();
 
-  const entity = await getEntityPage(type, slug);
+  const [entity, reportCount] = await Promise.all([
+    getEntityPage(type, slug),
+    getScamReportCount(type as EntityType, slug),
+  ]);
   if (!entity) notFound();
 
-  const comments = await getCommentsForEntity(entity.id);
+  const entityComments = await getCommentsForEntity(entity.id);
+
   const riskLevel = entity.risk_level;
   const verdict = entity.latest_verdict;
+  const communityRisk = communityRiskLevel(reportCount);
+  // Community overrides the AI when >= 3 users have flagged it.
+  const effectiveRisk: RiskLevel | null = communityRisk ?? riskLevel;
+
+  // True if community says worse than AI.
+  const communityOverride =
+    communityRisk !== null &&
+    (riskLevel === null ||
+      riskLevel === "safe" ||
+      (riskLevel === "suspicious" && communityRisk === "likely_scam"));
 
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-10 sm:py-14">
@@ -242,11 +282,11 @@ export default async function EntityPage({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {riskLevel && (
+          {effectiveRisk && (
             <span
-              className={`rounded-full px-3 py-1 text-sm font-semibold ${RISK_CHIP[riskLevel]}`}
+              className={`rounded-full px-3 py-1 text-sm font-semibold ${RISK_CHIP[effectiveRisk]}`}
             >
-              {RISK_LABEL[riskLevel]}
+              {RISK_LABEL[effectiveRisk]}
             </span>
           )}
           <span className="text-sm text-slate-500">
@@ -268,10 +308,32 @@ export default async function EntityPage({
         </p>
       </header>
 
+      {/* Community override banner — shown when users say it's worse than the AI thought */}
+      {communityOverride && (
+        <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4">
+          <p className="text-sm font-semibold text-red-800">
+            ⚠{" "}
+            {communityRisk === "likely_scam"
+              ? "Community verdict: this is a scam"
+              : "Community reports say this is suspicious"}
+          </p>
+          <p className="mt-1 text-sm text-red-600">
+            {reportCount} Guardurai user
+            {reportCount !== 1 ? "s have" : " has"} flagged this — even though
+            the AI analysis{" "}
+            {riskLevel === "safe"
+              ? "initially rated it safe"
+              : "rated it less seriously"}
+            . Trust the community here.
+          </p>
+        </div>
+      )}
+
+      {/* AI verdict */}
       {verdict && (
         <section className="mt-8">
           <h2 className="mb-4 text-base font-semibold text-slate-900">
-            Latest verdict
+            Latest AI verdict
           </h2>
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             {entity.entity_type === "company" ? (
@@ -285,30 +347,33 @@ export default async function EntityPage({
         </section>
       )}
 
-      <div className="mt-6 rounded-xl border border-blue-100 bg-blue-50 p-4 text-center">
-        <p className="text-sm text-slate-700">
-          Have more information about{" "}
-          <strong className="text-slate-900">{entity.display_name}</strong>?
-        </p>
+      {/* Flag + CTA */}
+      <div className="mt-6 flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <FlagAsScamButton
+          entityType={entity.entity_type}
+          slug={entity.slug}
+          initialReportCount={reportCount}
+        />
         <Link
-          href="/"
-          className="mt-2 inline-block rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700"
+          href={`/?q=${encodeURIComponent(entity.display_name)}`}
+          className="shrink-0 rounded-lg bg-blue-600 px-4 py-2 text-center text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700"
         >
           Run a fresh check →
         </Link>
       </div>
 
+      {/* Community comments */}
       <section className="mt-10">
         <h2 className="mb-4 text-base font-semibold text-slate-900">
           Community reports
           <span className="ml-2 text-sm font-normal text-slate-400">
-            ({comments.length})
+            ({entityComments.length})
           </span>
         </h2>
 
-        {comments.length > 0 ? (
+        {entityComments.length > 0 ? (
           <div className="mb-6 divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            {comments.map((c) => (
+            {entityComments.map((c) => (
               <div key={c.id} className="px-5 py-4">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-sm font-medium text-slate-800">

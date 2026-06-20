@@ -66,7 +66,7 @@ create table if not exists public.scam_reports (
   input_value      text not null,        -- normalised: domain without www, E.164 phone
   report_count     int  not null default 1,
   source           text not null default 'user'
-                     check (source in ('user', 'fca', 'urlhaus')),
+                     check (source in ('user', 'fca', 'urlhaus', 'reddit')),
   source_label     text,                 -- e.g. "FCA Warning List: XYZ Capital Ltd"
   first_reported_at timestamptz not null default now(),
   last_reported_at  timestamptz not null default now(),

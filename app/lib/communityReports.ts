@@ -55,7 +55,7 @@ export async function lookupCommunityReports(text: string): Promise<CommunityMat
 /** Submit one or more identifiers as community scam reports. */
 export async function submitCommunityReport(
   items: { inputType: "domain" | "phone"; inputValue: string }[],
-  source: "user" | "fca" | "urlhaus" = "user",
+  source: "user" | "fca" | "urlhaus" | "reddit" = "user",
   label?: string,
 ): Promise<void> {
   const supabase = getSupabaseAdmin();
@@ -93,8 +93,19 @@ export function describeCommunityReports(matches: CommunityMatch[]): string {
         ? `FCA Warning List (${m.sourceLabel ?? "unauthorized firm"})`
         : m.source === "urlhaus"
           ? "URLhaus malware/phishing database"
-          : `${m.reportCount} Guardurai user report${m.reportCount !== 1 ? "s" : ""}`;
+          : m.source === "reddit"
+            ? `Reddit r/ScamNumbers (${m.reportCount} post${m.reportCount !== 1 ? "s" : ""})`
+            : `${m.reportCount} Guardurai user report${m.reportCount !== 1 ? "s" : ""}`;
     return `- ${m.inputValue} (${m.inputType}): flagged by ${who}`;
   });
   return `Community scam database matches — treat these as STRONG evidence of fraud:\n${lines.join("\n")}`;
+}
+
+/** Report count threshold → risk override. Returns null if count is too low to matter. */
+export function communityRiskLevel(
+  reportCount: number,
+): "likely_scam" | "suspicious" | null {
+  if (reportCount >= 10) return "likely_scam";
+  if (reportCount >= 3) return "suspicious";
+  return null;
 }
