@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import ScamChecker from "@/app/components/ScamChecker";
-import ExtensionCTA from "@/app/components/ExtensionCTA";
 import GuarduraiMascot from "@/app/components/GuarduraiMascot";
 import LatestScams from "@/app/components/LatestScams";
 import { getUserId, isClerkConfigured } from "@/app/lib/auth";
@@ -33,8 +32,6 @@ export default async function Home({
           </p>
         </div>
       </header>
-
-      <ExtensionCTA />
 
       <ScamChecker
         tier={tier}

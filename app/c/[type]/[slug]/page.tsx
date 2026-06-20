@@ -8,6 +8,7 @@ import {
 } from "@/app/lib/entityPages";
 import type { EntityType } from "@/app/lib/entityPages";
 import { communityRiskLevel } from "@/app/lib/communityReports";
+import { SITE_URL } from "@/app/lib/site";
 import CommentForm from "@/app/components/CommentForm";
 import FlagAsScamButton from "@/app/components/FlagAsScamButton";
 import type { RiskLevel, Verdict } from "@/app/lib/scamAnalysis";
@@ -262,8 +263,36 @@ export default async function EntityPage({
       riskLevel === "safe" ||
       (riskLevel === "suspicious" && communityRisk === "likely_scam"));
 
+  const pageUrl = `${SITE_URL}/c/${entity.entity_type}/${entity.slug}`;
+  const riskLabel = effectiveRisk ? RISK_LABEL[effectiveRisk] : "Unknown";
+  const verdictSummary =
+    (verdict as { summary?: string } | null)?.summary ??
+    `Guardurai checked ${entity.display_name} ${entity.check_count} time${entity.check_count !== 1 ? "s" : ""}. Community verdict: ${riskLabel}.`;
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: [
+      {
+        "@type": "Question",
+        name: `Is ${entity.display_name} a scam?`,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: verdictSummary,
+        },
+      },
+    ],
+    url: pageUrl,
+    name: `${entity.display_name} — Scam check`,
+    description: `Community scam report for ${entity.display_name}. Verdict: ${riskLabel}. Checked ${entity.check_count} time${entity.check_count !== 1 ? "s" : ""} on Guardurai.`,
+  };
+
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-10 sm:py-14">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <Link
         href="/"
         className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"

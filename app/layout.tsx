@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 import AuthHeader from "@/app/components/AuthHeader";
+import ExtensionCTA from "@/app/components/ExtensionCTA";
 import { isClerkConfigured } from "@/app/lib/auth";
 import { SITE_URL, SITE_NAME } from "@/app/lib/site";
 
@@ -46,6 +47,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-slate-50">
         <AuthHeader />
+        <ExtensionCTA />
         {children}
       </body>
     </html>
