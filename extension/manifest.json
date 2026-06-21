@@ -1,20 +1,37 @@
 {
   "manifest_version": 3,
   "name": "Guardurai — Scam Checker",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "Guardurai uses AI to detect scams, verify companies, and protect you online — right-click any text to check it instantly.",
-  "permissions": ["contextMenus", "scripting", "activeTab", "storage"],
-  "host_permissions": ["https://guardurai.com/*", "<all_urls>"],
+  "permissions": [
+    "contextMenus",
+    "scripting",
+    "activeTab",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://guardurai.com/*",
+    "<all_urls>"
+  ],
   "content_scripts": [
     {
-      "matches": ["http://*/*", "https://*/*"],
-      "js": ["content.js"],
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_idle",
       "all_frames": false
     },
     {
-      "matches": ["https://mail.google.com/*"],
-      "js": ["gmail.js"],
+      "matches": [
+        "https://mail.google.com/*"
+      ],
+      "js": [
+        "gmail.js"
+      ],
       "run_at": "document_idle",
       "all_frames": false
     },
@@ -28,7 +45,9 @@
         "https://mail.proton.me/*",
         "https://mail.aol.com/*"
       ],
-      "js": ["mailcheck.js"],
+      "js": [
+        "mailcheck.js"
+      ],
       "run_at": "document_idle",
       "all_frames": false
     }

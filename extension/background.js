@@ -73,7 +73,14 @@ function createMenu() {
 }
 
 // Create on install/update and on browser startup so the item is always present.
-chrome.runtime.onInstalled.addListener(createMenu);
+chrome.runtime.onInstalled.addListener((details) => {
+  createMenu();
+  // Open a welcome page on first install (not on updates) so new users learn
+  // what the extension does and how to use it.
+  if (details.reason === "install") {
+    chrome.tabs.create({ url: `${GUARDURAI_API}/welcome` });
+  }
+});
 chrome.runtime.onStartup.addListener(createMenu);
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
