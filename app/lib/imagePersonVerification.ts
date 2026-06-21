@@ -203,7 +203,7 @@ export async function aiGeneratedCheck(
     const formData = new FormData();
     formData.append("api_user", apiUser);
     formData.append("api_secret", apiSecret);
-    formData.append("models", "ai-generated");
+    formData.append("models", "genai");
     formData.append("media", blob, "photo.jpg");
 
     const res = await fetch("https://api.sightengine.com/1.0/check.json", {
@@ -221,7 +221,7 @@ export async function aiGeneratedCheck(
     const data = (await res.json()) as {
       status: string;
       error?: { type?: string; message?: string };
-      ai_generated?: { score?: number };
+      type?: { ai_generated?: number };
     };
     if (data.status !== "success") {
       const msg = `Sightengine status=${data.status} error=${JSON.stringify(data.error)}`;
@@ -229,7 +229,8 @@ export async function aiGeneratedCheck(
       return { data: null, error: msg };
     }
 
-    const aiScore = data.ai_generated?.score ?? 0;
+    // genai model returns a 0–1 score at type.ai_generated (1 = very likely AI).
+    const aiScore = data.type?.ai_generated ?? 0;
     const flags: string[] = [];
 
     if (aiScore >= 0.85) {
