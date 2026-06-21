@@ -3,18 +3,14 @@ import { sendEmail, isEmailConfigured } from "@/app/lib/email";
 
 export const runtime = "nodejs";
 
-// Temporary diagnostic: verifies the production email pipeline end-to-end.
-// Protected by CRON_SECRET. Remove after confirming alerts send.
-export async function GET(request: Request) {
-  const auth = request.headers.get("authorization");
-  const secret = process.env.CRON_SECRET;
-  if (!secret || auth !== `Bearer ${secret}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+// TEMPORARY diagnostic — verifies the production email pipeline. Hardcoded to a
+// single recipient so it can't be abused, and requires ?run=guardurai-test.
+// DELETE this route after confirming alerts send.
+const TEST_RECIPIENT = "keirondriver89@gmail.com";
 
-  const to = new URL(request.url).searchParams.get("to");
-  if (!to) {
-    return NextResponse.json({ error: "Pass ?to=email" }, { status: 400 });
+export async function GET(request: Request) {
+  if (new URL(request.url).searchParams.get("run") !== "guardurai-test") {
+    return NextResponse.json({ error: "Pass ?run=guardurai-test" }, { status: 400 });
   }
 
   if (!isEmailConfigured()) {
@@ -25,7 +21,7 @@ export async function GET(request: Request) {
   }
 
   const sent = await sendEmail({
-    to,
+    to: TEST_RECIPIENT,
     subject: "⚠️ Guardurai alert: Mum may have hit a scam",
     html: `
       <div style="font-family:-apple-system,Segoe UI,sans-serif;max-width:520px">
@@ -48,5 +44,5 @@ export async function GET(request: Request) {
       </div>`,
   });
 
-  return NextResponse.json({ ok: sent, to });
+  return NextResponse.json({ ok: sent, to: TEST_RECIPIENT });
 }
