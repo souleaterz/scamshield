@@ -232,6 +232,247 @@ export const SCAM_GUIDES: ScamGuide[] = [
       },
     ],
   },
+  {
+    slug: "amazon-prime-account-scam",
+    name: "Amazon Prime & account scam",
+    category: "Account & shopping",
+    metaTitle: "Amazon Scam Calls & Texts: How to Spot the Fake Amazon Message",
+    metaDescription:
+      "Got a call or text about an Amazon order you didn't make, or a Prime renewal? Learn how the Amazon impersonation scam works and how to stay safe.",
+    intro:
+      "Scammers impersonate Amazon by phone, text, or email claiming there's a problem with your account, a suspicious order, or an automatic Prime renewal — to trick you into handing over card details or remote access to your device.",
+    howItWorks:
+      "You receive an automated call, text, or email saying your Amazon Prime is about to auto-renew for a large amount, that an expensive order has been placed, or that your account is locked. Pressing a number or tapping a link connects you to a fake 'Amazon support' agent who either takes your card details to 'cancel' the charge, or talks you into installing remote-access software so they can drain your bank account.",
+    warningSigns: [
+      "An unexpected call or text about an order or Prime renewal you don't recognise",
+      "Being asked to 'press 1' to speak to an agent",
+      "Pressure to act fast before money leaves your account",
+      "A request to install an app (e.g. AnyDesk, TeamViewer) so they can 'help'",
+      "Being asked for your card details, PIN, or one-time passcode",
+      "A link to a site that isn't amazon.co.uk",
+    ],
+    whatToDo: [
+      "Hang up or delete the message — Amazon won't cold-call you about orders",
+      "Check orders only by logging in at amazon.co.uk or the official app",
+      "Never install remote-access software at the request of a caller",
+      "Never share a one-time passcode with anyone, even 'Amazon'",
+      "If you gave card or bank details, call your bank immediately",
+    ],
+    exampleMessage:
+      "AMAZON: Your Prime membership will auto-renew today for £79.99. To cancel, call 0800 XXX XXXX or visit amazon-billing-help.com",
+    faqs: [
+      {
+        question: "Does Amazon call you about suspicious orders?",
+        answer:
+          "No. Amazon will not phone you out of the blue to ask for payment details, passcodes, or remote access. Any genuine issue can be seen and managed by signing into your account directly.",
+      },
+      {
+        question: "I pressed 1 and spoke to someone — am I at risk?",
+        answer:
+          "Just speaking to them isn't harmful, but don't share any details, install anything, or move money. If you did, contact your bank and change your Amazon password from a device you trust.",
+      },
+    ],
+  },
+  {
+    slug: "dpd-evri-delivery-scam",
+    name: "DPD & Evri delivery scam",
+    category: "Delivery & parcels",
+    metaTitle: "DPD & Evri Scam Text: Spot the Fake Parcel Delivery Message",
+    metaDescription:
+      "Got a DPD or Evri text about a missed delivery or a small fee? Learn how the courier scam works, the warning signs, and what to do.",
+    intro:
+      "Fake DPD and Evri (formerly Hermes) texts claim your parcel couldn't be delivered or needs a small fee or address confirmation, linking to a convincing but fake site that steals your card and personal details.",
+    howItWorks:
+      "Scammers send mass texts impersonating couriers, knowing many people are genuinely expecting a parcel. The message says a delivery failed, your address needs confirming, or a small fee is due, and links to a lookalike site. Once you enter card details, they take a small payment to set up a recurring scam charge — or use your details and a follow-up 'bank' call to empty your account.",
+    warningSigns: [
+      "A delivery text for a parcel you weren't expecting, or from a courier you didn't use",
+      "A request to pay a small 'redelivery' or 'customs' fee",
+      "A link to a domain that isn't dpd.co.uk or evri.com",
+      "Spelling mistakes, odd characters, or a sense of urgency",
+      "A form asking for full card details and personal information",
+    ],
+    whatToDo: [
+      "Don't tap the link — track parcels in the official DPD or Evri app or website",
+      "Check the sender and the link domain carefully",
+      "Forward the text to 7726 to report it, then delete it",
+      "If you entered details, contact your bank and watch for a follow-up 'bank' call (that call is part of the scam)",
+    ],
+    exampleMessage:
+      "Evri: We were unable to deliver your parcel. Please confirm your details and pay the £1.99 redelivery fee: evri-redelivery-uk.com",
+    faqs: [
+      {
+        question: "Do DPD or Evri charge redelivery fees by text?",
+        answer:
+          "Genuine couriers may charge official customs fees on international parcels, but they direct you to their real website or app — they don't send unexpected payment links by text for small redelivery fees.",
+      },
+      {
+        question: "The tracking number looks real — does that mean it's safe?",
+        answer:
+          "No. Scammers add realistic-looking tracking numbers to make texts believable. Always verify by typing the courier's official website address yourself rather than tapping the link.",
+      },
+    ],
+  },
+  {
+    slug: "dvla-vehicle-tax-scam",
+    name: "DVLA vehicle tax & refund scam",
+    category: "Government & tax",
+    metaTitle: "DVLA Scam Text & Email: Fake Vehicle Tax and Refund Messages",
+    metaDescription:
+      "Got a DVLA text or email about a failed car tax payment or a refund? Learn how the DVLA scam works, the red flags, and what to do.",
+    intro:
+      "Scammers impersonate the DVLA with texts and emails about a failed vehicle tax payment, a refund you're owed, or your car being 'untaxed' — to harvest your card and personal details.",
+    howItWorks:
+      "The message claims your latest car tax payment failed, your vehicle is no longer taxed, or you're due a refund, and links to a fake DVLA page. It asks for your card and personal details to 'fix' the payment or 'release' the refund. The official-looking branding and the fear of a fine make people act without checking.",
+    warningSigns: [
+      "A text or email saying your vehicle tax failed or you're owed a refund",
+      "A link to a site that isn't gov.uk",
+      "Requests for card details, bank details, or your driving licence number",
+      "Threats of a fine, penalty, or your vehicle being clamped",
+      "Generic greetings and a sense of urgency",
+    ],
+    whatToDo: [
+      "Don't tap the link — the DVLA only uses gov.uk",
+      "Check or pay vehicle tax directly at gov.uk/vehicle-tax",
+      "Report scam texts to 7726 and forward scam emails to report@phishing.gov.uk",
+      "If you entered card details, call your bank straight away",
+    ],
+    exampleMessage:
+      "DVLA: Our records show your vehicle is no longer taxed. Avoid a £1,000 fine by updating your details: gov-uk-vehicletax.com/pay",
+    faqs: [
+      {
+        question: "Does the DVLA send refund or tax links by text?",
+        answer:
+          "No. The DVLA never sends texts or emails with links asking for payment or bank details. Genuine vehicle tax and refunds are handled only through gov.uk.",
+      },
+      {
+        question: "How can I tell a real gov.uk link?",
+        answer:
+          "Real UK government services always end in gov.uk (e.g. gov.uk/vehicle-tax). Anything like 'gov-uk-tax.com' or 'dvla-refund.net' is fake.",
+      },
+    ],
+  },
+  {
+    slug: "romance-scam",
+    name: "Romance & catfish scam",
+    category: "Dating & relationships",
+    metaTitle: "Romance Scam Signs: How to Spot a Catfish or Fake Online Partner",
+    metaDescription:
+      "Met someone online who feels too good to be true? Learn the warning signs of a romance scam or catfish, and how to check if they're real.",
+    intro:
+      "In a romance scam, a fraudster builds a fake online relationship — often using stolen or AI-generated photos — to win your trust, then invents an emergency to ask you for money.",
+    howItWorks:
+      "Scammers create attractive fake profiles on dating apps and social media, sometimes using AI-generated faces that don't exist. They move fast emotionally, profess strong feelings quickly, and steer you off the app to private chat. They always have a reason they can't meet or video call. Eventually a crisis appears — a medical bill, a stuck shipment, a business emergency, or a 'guaranteed' crypto investment — and they ask for money, usually by bank transfer, gift cards, or crypto.",
+    warningSigns: [
+      "They fall for you very quickly and talk about a future together early",
+      "They always have an excuse not to video call or meet in person",
+      "Their photos look like a model, or feel too polished — possibly AI-generated",
+      "They move the conversation to WhatsApp or email fast",
+      "They eventually ask for money, gift cards, or crypto — or 'investment' help",
+      "Their story has small inconsistencies that change over time",
+    ],
+    whatToDo: [
+      "Never send money, gift cards, or crypto to someone you haven't met in person",
+      "Insist on a live video call — scammers will keep making excuses",
+      "Do a reverse-image search on their photos to see if they're stolen or fake",
+      "Talk to a friend or family member — scammers rely on isolating you",
+      "Report the profile to the platform, and to Action Fraud if you've lost money",
+    ],
+    exampleMessage:
+      "My darling, I'm finally able to fly out to meet you, but customs are holding my bag and I need £900 to release it. You're the only one I can trust. I'll pay you back the moment I land.",
+    faqs: [
+      {
+        question: "How can I check if someone online is real?",
+        answer:
+          "Ask for a live video call (not just photos), reverse-image-search their pictures, and check whether their story holds up. Guardurai's photo check can run a reverse-image search and AI deepfake detection to help tell whether a profile photo is real.",
+      },
+      {
+        question: "They asked me to invest in crypto — is that a romance scam?",
+        answer:
+          "Very likely. 'Pig butchering' scams blend romance with fake crypto investing: the relationship is bait, and the 'investment platform' is fake. Never invest money on the advice of someone you met online.",
+      },
+    ],
+  },
+  {
+    slug: "job-task-scam",
+    name: "Job offer & task scam",
+    category: "Jobs & money",
+    metaTitle: "Job & Task Scam: Fake Work-From-Home and WhatsApp Job Offers",
+    metaDescription:
+      "Got an unexpected WhatsApp or text offering easy work-from-home money for completing tasks? Learn how the job and task scam works and how to avoid it.",
+    intro:
+      "Task scams lure you with messages offering easy money for simple online 'tasks' like rating products or liking videos — then trick you into depositing your own money that you never get back.",
+    howItWorks:
+      "You get an unsolicited WhatsApp, text, or social media message offering well-paid, flexible work doing simple tasks. At first you're paid small amounts to build trust. Then you're moved onto 'combined tasks' that require you to top up your own money to 'unlock' commissions. The balance and earnings shown on their app are fake — when you try to withdraw, you're asked to pay more 'fees' or taxes, and you never get any of it back.",
+    warningSigns: [
+      "An out-of-the-blue message offering easy, high-paid remote work",
+      "Vague employer details and recruitment over WhatsApp or Telegram",
+      "Small early payments to build your trust",
+      "Being asked to deposit or 'top up' your own money to earn commission",
+      "An app or website showing a growing balance you can't actually withdraw",
+      "Pressure to recruit friends or act quickly",
+    ],
+    whatToDo: [
+      "Ignore unsolicited job offers that arrive by text or WhatsApp",
+      "Never pay money to get a job or to 'unlock' earnings — legitimate jobs don't work that way",
+      "Don't share ID, bank details, or crypto wallet access",
+      "Report the number and block it; report losses to Action Fraud",
+    ],
+    exampleMessage:
+      "Hi! I'm Amy from a digital marketing agency. We offer part-time online work, £100–£300/day, just completing simple tasks from your phone. Interested? Reply on WhatsApp to start.",
+    faqs: [
+      {
+        question: "Why did they pay me at first?",
+        answer:
+          "Small early payments are bait to make the scheme feel real and build trust before they ask you to deposit your own, much larger sums. The early 'earnings' are tiny compared to what you'll be persuaded to put in.",
+      },
+      {
+        question: "Can I get my money back from a task scam?",
+        answer:
+          "It's difficult, especially if you paid by crypto or bank transfer, but report it to your bank immediately and to Action Fraud — acting fast gives the best chance of recovering funds.",
+      },
+    ],
+  },
+  {
+    slug: "facebook-marketplace-scam",
+    name: "Facebook Marketplace scam",
+    category: "Buying & selling",
+    metaTitle: "Facebook Marketplace Scams: How to Buy and Sell Safely",
+    metaDescription:
+      "Buying or selling on Facebook Marketplace? Learn the most common scams — fake couriers, overpayments, and verification-code tricks — and how to stay safe.",
+    intro:
+      "Facebook Marketplace scams target both buyers and sellers with fake payment confirmations, bogus courier fees, overpayment tricks, and links that steal your bank login.",
+    howItWorks:
+      "As a seller, a 'buyer' offers to pay by a courier that you've never heard of and sends a fake email saying you must pay a release fee first, or 'accidentally overpays' and asks for a refund of the difference. As a buyer, a 'seller' takes your deposit for an item that doesn't exist, or sends a fake payment-verification link that captures your bank details. Some scammers also send a code to 'verify you're real' — which is actually a way to hijack your phone number or accounts.",
+    warningSigns: [
+      "A buyer or seller who wants to move off Marketplace to text or WhatsApp immediately",
+      "Payment via an unusual courier or service, with a 'fee' you must pay first",
+      "An offer to overpay, then a request to refund the difference",
+      "A 'verification code' they ask you to read back to them",
+      "A deal that's far too cheap, or pressure to pay a deposit to 'hold' an item",
+      "A payment-confirmation email or link that doesn't come from your real bank or PayPal",
+    ],
+    whatToDo: [
+      "Deal in person and locally where possible; for goods, pay on collection",
+      "Never pay a 'courier release fee' or refund an overpayment to a stranger",
+      "Never read out a verification code sent to your phone",
+      "Don't click payment-verification links — check your bank or PayPal app directly",
+      "Use payment methods with buyer protection, and trust your instincts on prices that are too good to be true",
+    ],
+    exampleMessage:
+      "Hi, I'd like to buy your item. I'll send my courier to collect and pay you via PayPal. You'll get an email to release the funds — just pay the £25 courier insurance first and I'll add it to the total.",
+    faqs: [
+      {
+        question: "Why would a buyer ask me to pay a fee?",
+        answer:
+          "It's a scam. No genuine buyer needs you to pay a courier or 'insurance' fee before you receive your money. The fake email pressuring you to pay is designed to look like PayPal or a courier but isn't.",
+      },
+      {
+        question: "Someone asked me for a code to prove I'm 'not a bot' — is that safe?",
+        answer:
+          "No. That code is usually a verification code for your own account or a new account they're creating in your name. Never share codes sent to your phone with anyone.",
+      },
+    ],
+  },
 ];
 
 export function getGuide(slug: string): ScamGuide | undefined {
