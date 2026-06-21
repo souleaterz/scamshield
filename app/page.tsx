@@ -58,6 +58,14 @@ export default async function Home({
           organisation directly using details you trust.
         </p>
         <p className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+          <Link href="/about" className="hover:text-slate-600">
+            About
+          </Link>
+          <span aria-hidden>·</span>
+          <Link href="/pricing" className="hover:text-slate-600">
+            Pricing
+          </Link>
+          <span aria-hidden>·</span>
           <Link href="/privacy" className="hover:text-slate-600">
             Privacy
           </Link>
