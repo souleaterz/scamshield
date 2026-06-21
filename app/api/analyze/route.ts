@@ -14,6 +14,7 @@ import { checkUrlsInText, describeChecks } from "@/app/lib/urlReputation";
 import { checkPhonesInText, describePhoneChecks } from "@/app/lib/phoneReputation";
 import { lookupCommunityReports, describeCommunityReports } from "@/app/lib/communityReports";
 import { upsertEntitiesFromVerdict } from "@/app/lib/entityPages";
+import { notifyGuardianOfScam } from "@/app/lib/family";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -147,6 +148,22 @@ export async function POST(request: Request) {
 
     // Persist entity pages after response is sent — non-blocking, best-effort.
     after(() => void upsertEntitiesFromVerdict(fullVerdict));
+
+    // If a protected family member hits a likely scam, alert their guardian.
+    if (userId && verdict.risk_level === "likely_scam") {
+      const dedupKey = (
+        linkChecks[0]?.host ??
+        phoneChecks[0]?.e164 ??
+        verdict.detected_type
+      ).toLowerCase();
+      after(() =>
+        void notifyGuardianOfScam(userId, {
+          summary: verdict.summary,
+          detectedType: verdict.detected_type,
+          dedupKey,
+        }),
+      );
+    }
 
     return NextResponse.json(fullVerdict);
   } catch (err) {

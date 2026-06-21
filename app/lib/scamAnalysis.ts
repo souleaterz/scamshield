@@ -73,7 +73,7 @@ export interface CommunityMatch {
 }
 
 /** Subscription tier — drives which model handles the check. */
-export type Tier = "free" | "pro";
+export type Tier = "free" | "pro" | "family";
 
 export interface AnalyzeInput {
   text?: string;
@@ -89,6 +89,7 @@ export interface AnalyzeInput {
 const MODELS: Record<Tier, string> = {
   free: "claude-haiku-4-5",
   pro: "claude-sonnet-4-6",
+  family: "claude-sonnet-4-6",
 };
 
 const SYSTEM_PROMPT = `You are Guardurai, an expert fraud and scam detection analyst. \

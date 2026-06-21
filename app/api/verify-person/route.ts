@@ -27,6 +27,7 @@ const MAX_IMAGE_BASE64_LENGTH = 7_000_000;
 const MODELS: Record<Tier, string> = {
   free: "claude-haiku-4-5",
   pro: "claude-sonnet-4-6",
+  family: "claude-sonnet-4-6",
 };
 
 const SYSTEM_PROMPT = `You are a forensic image analyst specialising in detecting fake, AI-generated, and stolen profile photos used in romance scams, catfishing, and online fraud.

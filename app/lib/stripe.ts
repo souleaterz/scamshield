@@ -15,7 +15,7 @@ export function isStripeConfigured(): boolean {
   return Boolean(process.env.STRIPE_SECRET_KEY);
 }
 
-export const PAID_TIERS = ["pro"] as const;
+export const PAID_TIERS = ["pro", "family"] as const;
 export type PaidTier = (typeof PAID_TIERS)[number];
 
 export function isPaidTier(value: unknown): value is PaidTier {
@@ -25,8 +25,9 @@ export function isPaidTier(value: unknown): value is PaidTier {
   );
 }
 
-/** Stripe Price ID for the Pro plan, from env. */
-export function priceIdForTier(_tier: PaidTier): string | undefined {
+/** Stripe Price ID for a paid plan, from env. */
+export function priceIdForTier(tier: PaidTier): string | undefined {
+  if (tier === "family") return process.env.STRIPE_PRICE_FAMILY;
   return process.env.STRIPE_PRICE_PRO;
 }
 
@@ -34,5 +35,6 @@ export function priceIdForTier(_tier: PaidTier): string | undefined {
 export function tierForPriceId(priceId: string | null | undefined): Tier {
   if (!priceId) return "free";
   if (priceId === process.env.STRIPE_PRICE_PRO) return "pro";
+  if (priceId === process.env.STRIPE_PRICE_FAMILY) return "family";
   return "free";
 }

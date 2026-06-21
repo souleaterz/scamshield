@@ -5,6 +5,7 @@ import type { RiskLevel, Tier } from "@/app/lib/scamAnalysis";
 export const DAILY_LIMITS: Record<Tier, number> = {
   free: 3,
   pro: 200,
+  family: 200,
 };
 
 export interface RateLimitResult {

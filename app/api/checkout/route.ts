@@ -89,7 +89,10 @@ export async function POST(request: Request) {
       trial_period_days: 3,
       metadata: { userId, tier: body.tier },
     },
-    success_url: `${origin}/?upgraded=1`,
+    success_url:
+      body.tier === "family"
+        ? `${origin}/family?upgraded=1`
+        : `${origin}/?upgraded=1`,
     cancel_url: `${origin}/?canceled=1`,
   });
 
