@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Verdict, RiskLevel, PhoneCheck, CommunityMatch } from "@/app/lib/scamAnalysis";
 
 const RISK: Record<
@@ -37,7 +38,13 @@ const RISK: Record<
   },
 };
 
-export default function VerdictCard({ verdict }: { verdict: Verdict }) {
+export default function VerdictCard({
+  verdict,
+  lockBreakdown = false,
+}: {
+  verdict: Verdict;
+  lockBreakdown?: boolean;
+}) {
   const r = RISK[verdict.risk_level] ?? RISK.suspicious;
   const confidence = Math.min(100, Math.max(0, verdict.confidence || 0));
 
@@ -89,11 +96,14 @@ export default function VerdictCard({ verdict }: { verdict: Verdict }) {
         </div>
 
         {verdict.red_flags.length > 0 && (
-          <section className="rounded-xl border border-red-100 bg-red-50/60 p-4">
+          <section className="relative overflow-hidden rounded-xl border border-red-100 bg-red-50/60 p-4">
             <h3 className="text-sm font-semibold text-red-900">
               🚩 Red flags ({verdict.red_flags.length})
             </h3>
-            <ul className="mt-2.5 space-y-2">
+            <ul
+              className={`mt-2.5 space-y-2 ${lockBreakdown ? "pointer-events-none select-none blur-sm" : ""}`}
+              aria-hidden={lockBreakdown || undefined}
+            >
               {verdict.red_flags.map((flag, i) => (
                 <li key={i} className="flex gap-2.5 text-sm text-slate-700">
                   <span
@@ -106,6 +116,23 @@ export default function VerdictCard({ verdict }: { verdict: Verdict }) {
                 </li>
               ))}
             </ul>
+
+            {lockBreakdown && (
+              <div className="absolute inset-x-0 bottom-0 top-9 flex flex-col items-center justify-center gap-1.5 bg-gradient-to-t from-white via-white/85 to-transparent px-4 text-center">
+                <span className="text-sm font-semibold text-slate-900">
+                  🔒 See the full red-flag breakdown
+                </span>
+                <p className="text-xs text-slate-500">
+                  Pro spells out exactly what&apos;s wrong and why.
+                </p>
+                <Link
+                  href="/pricing"
+                  className="mt-1 rounded-lg bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-blue-700"
+                >
+                  Upgrade to unlock
+                </Link>
+              </div>
+            )}
           </section>
         )}
 

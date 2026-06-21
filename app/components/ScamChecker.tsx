@@ -17,6 +17,7 @@ import ShareButton from "@/app/components/ShareButton";
 import ReportWithCommentForm from "@/app/components/ReportWithCommentForm";
 import PricingPlans from "@/app/components/PricingPlans";
 import ManageBilling from "@/app/components/ManageBilling";
+import UpgradePanel from "@/app/components/UpgradePanel";
 
 interface AttachedImage {
   media_type: ImageMediaType;
@@ -80,6 +81,8 @@ export default function ScamChecker({
   const [loading, setLoading] = useState(false);
   const [dragging, setDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const isFree = tier === "free";
 
   // Auto-detect email headers live as the user types
   const headersDetected =
@@ -367,7 +370,19 @@ export default function ScamChecker({
         )}
 
         {/* ── Photo / identity mode ── */}
-        {mode === "photo" && (
+        {mode === "photo" && isFree && (
+          <UpgradePanel
+            icon="🖼️"
+            title="Is this person real?"
+            description="Catch romance scams and catfish with reverse-image search and AI deepfake detection."
+            bullets={[
+              "Reverse-image search across the web",
+              "AI-generated & deepfake face detection",
+              "0–100 'Real Score' with a clear verdict",
+            ]}
+          />
+        )}
+        {mode === "photo" && !isFree && (
           <div
             onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
             onDragLeave={() => setDragging(false)}
@@ -430,7 +445,19 @@ export default function ScamChecker({
         )}
 
         {/* ── Company mode ── */}
-        {mode === "company" && (
+        {mode === "company" && isFree && (
+          <UpgradePanel
+            icon="🏢"
+            title="Check a company or investment"
+            description="Verify any UK company before you part with your money."
+            bullets={[
+              "Companies House status, age & address",
+              "FCA Financial Services Register check",
+              "0–100 legitimacy score",
+            ]}
+          />
+        )}
+        {mode === "company" && !isFree && (
           <div className="p-4">
             <p className="mb-3 text-sm text-slate-500">
               Enter a UK company name, Companies House number (e.g. <strong>12345678</strong> or <strong>SC123456</strong>), or FCA Firm Reference Number to check if it&apos;s legitimate.
@@ -489,7 +516,7 @@ export default function ScamChecker({
 
       {verdict && (
         <div className="space-y-3">
-          <VerdictCard verdict={verdict} />
+          <VerdictCard verdict={verdict} lockBreakdown={isFree} />
           <div className="flex justify-end">
             <ShareButton verdict={verdict} />
           </div>

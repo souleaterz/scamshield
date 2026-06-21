@@ -36,6 +36,14 @@ export async function POST(request: Request) {
     const identifierType: "ip" | "user" = userId ? "user" : "ip";
     const tier: Tier = await getTierForUser(userId);
 
+    // Company & FCA checks are a paid feature.
+    if (tier === "free") {
+      return NextResponse.json(
+        { error: "Company & FCA checks are a Pro feature.", requiresUpgrade: true },
+        { status: 403 },
+      );
+    }
+
     const limit = await checkRateLimit(identifier, tier);
     if (!limit.allowed) {
       return NextResponse.json(

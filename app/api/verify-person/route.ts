@@ -141,6 +141,17 @@ export async function POST(request: Request) {
     const identifierType: "ip" | "user" = userId ? "user" : "ip";
     const tier: Tier = await getTierForUser(userId);
 
+    // Photo / identity verification is a paid feature.
+    if (tier === "free") {
+      return NextResponse.json(
+        {
+          error: "Photo & identity checks are a Pro feature.",
+          requiresUpgrade: true,
+        },
+        { status: 403 },
+      );
+    }
+
     const limit = await checkRateLimit(identifier, tier);
     if (!limit.allowed) {
       return NextResponse.json(
