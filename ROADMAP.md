@@ -64,28 +64,31 @@ Legend: ✅ done · 🚧 partial · ⬜ planned
 ## ⬜ Tomorrow — launch sprint
 
 ### 🔑 Production keys + domain
-- [ ] **Custom domain** — buy `guardurai.com` (or `.io`), point to Vercel, configure SSL
-- [ ] **Clerk production instance** — swap test keys for production keys in Vercel env vars; set the production Clerk domain to match the custom domain; rotate old test keys
-- [ ] **Stripe live mode** — swap test keys for live keys; recreate the Pro £4.99/mo product in live mode; update webhook endpoint to production URL; verify a real card checkout end-to-end
-- [ ] **Confirm Stripe webhook** — trigger a live test upgrade, check Vercel function logs, confirm `subscriptions` table syncs and tier flips to `pro`
-- [ ] **Set NEXT_PUBLIC_APP_URL** to the production domain so sitemap/OG/canonical all use the real URL
-- [ ] **Rotate all dev keys** exposed during development (Anthropic, Stripe, Clerk)
+- [x] **Custom domain** — `guardurai.com` bought + attached to Vercel; app + extension URLs updated
+- [ ] **Set NEXT_PUBLIC_APP_URL** = `https://guardurai.com` in Vercel env + redeploy (DASHBOARD)
+- [ ] **Clerk production instance** — swap test keys for production keys in Vercel env vars; set the production Clerk domain to match the custom domain; rotate old test keys (DASHBOARD)
+- [ ] **Stripe live mode** — swap test keys for live keys; recreate the Pro £4.99/mo product in live mode; update webhook endpoint to production URL; verify a real card checkout end-to-end (DASHBOARD)
+- [ ] **Confirm Stripe webhook** — trigger a live test upgrade, check Vercel function logs, confirm `subscriptions` table syncs and tier flips to `pro` (DASHBOARD)
+- [ ] **Rotate all dev keys** exposed during development (Anthropic, Stripe, Clerk) (DASHBOARD)
 
 ### 🧩 Extension — multi-email-client support
-- [ ] **Outlook Web** — detect `div[data-convid]` (OWA) and inject "Check with Guardurai" button into the reading pane
-- [ ] **Apple Mail / Yahoo Mail** — detect their DOM, inject check button on message open
-- [ ] **Generic webmail** — fallback: selection-based context menu already works; add a floating check button when ≥50 chars is selected on any page
-- [ ] **Extension onboarding page** — show on install (`chrome.runtime.onInstalled`); explain what it does, link to Pro plan, ask for notification permission
-- [ ] **Chrome Web Store submission** — store listing assets (icon 128px, 440×280 screenshots ×5, privacy policy URL, short/long description). Privacy policy page needed at `/privacy`.
+- [x] **Other webmail (Outlook, Yahoo, iCloud, Proton, AOL)** — `mailcheck.js` selection-based floating "Check with Guardurai" button (avoids fragile per-provider scraping)
+- [x] **Gmail** — dedicated DOM integration already shipped (`gmail.js`)
+- [ ] **Extension onboarding page** — show on install (`chrome.runtime.onInstalled`); explain what it does, link to Pro plan
+- [ ] **Chrome Web Store submission** — store listing assets (icon 128px, 440×280 screenshots ×5, privacy policy URL, short/long description). Privacy policy page now live at `/privacy`. (DASHBOARD)
 
 ### 💰 Monetisation polish
-- [ ] **Trial flow** — 3-day free Pro trial on first signup; Stripe trial_period_days=3; show countdown in AuthHeader
+- [x] **Trial flow** — 3-day free Pro trial on signup (Stripe `trial_period_days=3`); `trialing` status grants Pro; pricing UI advertises it
 - [ ] **Upgrade nudge in extension** — when free limit hit in overlay/popup, show upgrade prompt with direct checkout link (deep-link into Stripe)
 - [ ] **Manage billing from extension popup** — link to Stripe portal so Pro users can cancel without leaving the browser
 
+### ⚙️ Reddit cron fix
+- [x] **OAuth client_credentials** — cron now authenticates against `oauth.reddit.com` (anonymous `.json` was 403'd from servers)
+- [ ] **Register Reddit script app** + add `REDDIT_CLIENT_ID`/`REDDIT_CLIENT_SECRET` to `.env.local` + Vercel (DASHBOARD)
+
 ### 🔍 SEO quick wins
-- [ ] **`/privacy` and `/terms` pages** — required for Chrome Web Store + Clerk production + Google AdSense; plain text is fine
-- [ ] **Google Search Console** — submit the sitemap once the custom domain is live; verify ownership via DNS TXT record
+- [x] **`/privacy` and `/terms` pages** — live, linked from footer, in sitemap
+- [ ] **Google Search Console** — submit the sitemap once the custom domain is live; verify ownership via DNS TXT record (DASHBOARD)
 - [ ] **Open Graph image for entity pages** — right now entity pages use the default OG image; generate a dynamic one (next/og) showing the entity name + verdict badge
 
 ---
