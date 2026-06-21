@@ -57,6 +57,15 @@ export default async function Home({
           Guardurai gives guidance, not a guarantee. When in doubt, contact the
           organisation directly using details you trust.
         </p>
+        <p className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+          <Link href="/privacy" className="hover:text-slate-600">
+            Privacy
+          </Link>
+          <span aria-hidden>·</span>
+          <Link href="/terms" className="hover:text-slate-600">
+            Terms
+          </Link>
+        </p>
       </footer>
     </main>
   );
