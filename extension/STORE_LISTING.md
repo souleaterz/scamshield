@@ -106,13 +106,17 @@ phone numbers, emails, companies, and profile photos for signs of fraud.
 
 ### Permission justifications (required — one per permission)
 
-**host_permissions: `<all_urls>`**
+**Broad host access (content script on all sites)**
 ```
-Real-time scam protection must run on every website the user visits so it can
-warn them BEFORE they interact with a scam or phishing page. The extension sends
-only the page's URL to our scam database for a fast safety check; it does not
-read or transmit page content during passive protection. Access to all sites is
-essential to the extension's core protective purpose.
+The extension's core purpose is real-time protection: a lightweight content
+script must run on every website the user visits so it can warn them BEFORE they
+interact with a scam or phishing page. It sends only the page's URL to our scam
+database for a fast safety check — it does not read or transmit page content
+during passive protection. This cannot be achieved with activeTab, which only
+grants access after an explicit click and so cannot provide automatic, ongoing
+protection. We request no broad host_permissions beyond this; the API host
+(guardurai.com) is the only explicit host permission, and the right-click check
+overlay uses activeTab.
 ```
 
 **contextMenus**

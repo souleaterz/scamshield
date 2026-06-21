@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Guardurai — Scam Checker",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "description": "Guardurai uses AI to detect scams, verify companies, and protect you online — right-click any text to check it instantly.",
   "permissions": [
     "contextMenus",
@@ -10,8 +10,7 @@
     "storage"
   ],
   "host_permissions": [
-    "https://guardurai.com/*",
-    "<all_urls>"
+    "https://guardurai.com/*"
   ],
   "content_scripts": [
     {
