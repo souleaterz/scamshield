@@ -54,7 +54,7 @@ function readImageFile(file: File): Promise<AttachedImage> {
   });
 }
 
-type Mode = "check" | "company";
+type Mode = "check" | "photo" | "company";
 
 export default function ScamChecker({
   tier,
@@ -267,19 +267,18 @@ export default function ScamChecker({
         <div className="flex border-b border-slate-200">
           {(
             [
-              { id: "check", label: "🛡️ Check Anything" },
-              { id: "company", label: "🏢 Check Company" },
-            ] as { id: Mode; label: string }[]
-          ).map(({ id, label }) => (
+              { id: "check", label: "🛡️ Check Anything", active: "border-b-2 border-blue-600 text-blue-600 bg-blue-50/50" },
+              { id: "photo", label: "🖼️ Photo", active: "border-b-2 border-violet-600 text-violet-700 bg-violet-50/50" },
+              { id: "company", label: "🏢 Check Company", active: "border-b-2 border-emerald-600 text-emerald-700 bg-emerald-50/50" },
+            ] as { id: Mode; label: string; active: string }[]
+          ).map(({ id, label, active }) => (
             <button
               key={id}
               type="button"
               onClick={() => switchMode(id)}
-              className={`flex-1 whitespace-nowrap px-4 py-3 text-sm font-semibold transition-colors ${
+              className={`flex-1 whitespace-nowrap px-3 py-3 text-sm font-semibold transition-colors ${
                 mode === id
-                  ? id === "company"
-                    ? "border-b-2 border-emerald-600 text-emerald-700 bg-emerald-50/50"
-                    : "border-b-2 border-blue-600 text-blue-600 bg-blue-50/50"
+                  ? active
                   : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
               }`}
             >
@@ -340,20 +339,9 @@ export default function ScamChecker({
                 onChange={(e) => void handleFiles(e.target.files)}
               />
               <div className="flex flex-wrap gap-2">
-                {(text || image || verdict || personResult) && (
+                {(text || image || verdict) && (
                   <button type="button" onClick={reset} className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">
                     Clear
-                  </button>
-                )}
-                {/* Show "Verify this person" only when an image is attached */}
-                {image && (
-                  <button
-                    type="button"
-                    onClick={handleVerify}
-                    disabled={loading}
-                    className="rounded-lg border border-violet-200 bg-violet-50 px-4 py-2 text-sm font-semibold text-violet-700 shadow-sm transition-colors hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {loading ? "Analysing…" : "🕵️ Verify this person"}
                   </button>
                 )}
                 <button
@@ -367,12 +355,77 @@ export default function ScamChecker({
               </div>
             </div>
 
-            {/* Hint when only image is attached and no text */}
+            {/* Hint when checking a profile photo specifically */}
             {image && !text && (
               <p className="mt-2 text-xs text-slate-400">
-                Use <span className="font-medium">Check for scams</span> to analyse the image content, or <span className="font-medium">Verify this person</span> to check if it&apos;s a real person (profile photos).
+                Checking if a person is real? Use the{" "}
+                <span className="font-medium text-violet-600">🖼️ Photo</span> tab
+                for reverse-image &amp; deepfake detection.
               </p>
             )}
+          </div>
+        )}
+
+        {/* ── Photo / identity mode ── */}
+        {mode === "photo" && (
+          <div
+            onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={(e) => { e.preventDefault(); setDragging(false); void handleFiles(e.dataTransfer.files); }}
+            className={`p-4 transition-colors ${dragging ? "bg-violet-50" : ""}`}
+          >
+            <p className="mb-3 text-sm text-slate-500">
+              Upload a profile photo to check whether the person is real. We run a
+              reverse-image search and AI deepfake detection to catch romance
+              scams and catfish — and give a 0–100 &ldquo;Real Score&rdquo;.
+            </p>
+
+            {image ? (
+              <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={image.previewUrl} alt={image.name} className="h-16 w-16 rounded object-cover" />
+                <span className="flex-1 truncate text-sm text-slate-600">{image.name}</span>
+                <button type="button" onClick={() => setImage(null)} className="text-sm font-medium text-slate-400 hover:text-slate-600">
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                onPaste={handlePaste}
+                className="flex w-full flex-col items-center gap-2 rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center transition-colors hover:border-violet-300 hover:bg-violet-50/40"
+              >
+                <span className="text-2xl" aria-hidden>🖼️</span>
+                <span className="text-sm font-medium text-slate-600">
+                  Drop a photo here, paste it, or click to upload
+                </span>
+                <span className="text-xs text-slate-400">JPEG, PNG, GIF or WebP</span>
+              </button>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/gif,image/webp"
+              className="hidden"
+              onChange={(e) => void handleFiles(e.target.files)}
+            />
+
+            <div className="mt-3 flex justify-end gap-2">
+              {(image || personResult) && (
+                <button type="button" onClick={reset} className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">
+                  Clear
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleVerify}
+                disabled={!image || loading}
+                className="rounded-lg bg-violet-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-violet-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+              >
+                {loading ? "Analysing…" : "🕵️ Is this person real?"}
+              </button>
+            </div>
           </div>
         )}
 
