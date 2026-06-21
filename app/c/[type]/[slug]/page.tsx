@@ -11,7 +11,6 @@ import { communityRiskLevel } from "@/app/lib/communityReports";
 import { SITE_URL } from "@/app/lib/site";
 import CommentForm from "@/app/components/CommentForm";
 import FlagAsScamButton from "@/app/components/FlagAsScamButton";
-import AdSlot from "@/app/components/AdSlot";
 import type { RiskLevel, Verdict } from "@/app/lib/scamAnalysis";
 import type { CompanyCheckResult } from "@/app/lib/companyCheck";
 
@@ -390,11 +389,6 @@ export default async function EntityPage({
         >
           Run a fresh check →
         </Link>
-      </div>
-
-      {/* Ad — entity pages carry organic search traffic, so this is where ads earn */}
-      <div className="mt-8">
-        <AdSlot />
       </div>
 
       {/* Community comments */}
