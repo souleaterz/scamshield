@@ -235,6 +235,73 @@ export default function AboutPage() {
         </div>
       </section>
 
+      {/* ── Email-in-inbox band ──────────────────────────────────────────── */}
+      <section className="border-t border-slate-200 bg-white">
+        <div className="mx-auto grid max-w-4xl gap-8 px-4 py-14 sm:grid-cols-2 sm:items-center">
+          {/* Gmail-style mock with the Guardurai button */}
+          <div className="order-2 rounded-2xl border border-slate-200 bg-slate-50 p-5 shadow-sm sm:order-1">
+            <div className="rounded-xl border border-slate-200 bg-white p-4">
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-400 text-sm font-bold text-white">
+                  ?
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-slate-900">
+                    Your account is on hold — verify now
+                  </p>
+                  <p className="truncate text-xs text-slate-400">
+                    security-team@paypa1-alerts.com
+                  </p>
+                </div>
+              </div>
+              <p className="mt-3 text-xs leading-relaxed text-slate-500">
+                Dear customer, we detected unusual activity. Click the link below
+                within 24 hours to avoid suspension…
+              </p>
+              <button className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-blue-700 px-3 py-1.5 text-xs font-semibold text-white shadow">
+                🛡️ Check with Guardurai
+              </button>
+            </div>
+          </div>
+
+          <div className="order-1 sm:order-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-blue-600">
+              Right inside your inbox
+            </span>
+            <h2 className="mt-2 text-2xl font-bold text-slate-900 sm:text-3xl">
+              Check suspicious emails without leaving Gmail
+            </h2>
+            <p className="mt-3 text-slate-600">
+              A &ldquo;Check with Guardurai&rdquo; button appears right on the
+              email. One click reads the sender and the message, runs the full
+              scam analysis, and shows you the verdict — no copy-pasting, no
+              switching tabs. Built into{" "}
+              <strong>Gmail, Outlook, Yahoo, iCloud, Proton and AOL</strong>.
+            </p>
+            <ul className="mt-4 space-y-2 text-sm text-slate-700">
+              {[
+                "One click — we pull the sender and body for you",
+                "Catches spoofed senders and look-alike domains",
+                "Spot phishing before you click a single link",
+              ].map((t) => (
+                <li key={t} className="flex gap-2">
+                  <span className="mt-0.5 shrink-0 text-blue-500">✓</span>
+                  {t}
+                </li>
+              ))}
+            </ul>
+            <a
+              href={EXTENSION_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-5 inline-block rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700"
+            >
+              Add it to your inbox — free
+            </a>
+          </div>
+        </div>
+      </section>
+
       {/* ── How it works ─────────────────────────────────────────────────── */}
       <section className="border-t border-slate-200 bg-white">
         <div className="mx-auto max-w-3xl px-4 py-14">
