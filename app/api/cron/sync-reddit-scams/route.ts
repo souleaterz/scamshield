@@ -39,17 +39,50 @@ interface RedditListing {
   data: { children: RedditChild[]; after: string | null };
 }
 
+const USER_AGENT = "web:guardurai.scamcheck:v1.0 (by /u/guardurai)";
+
+/**
+ * Reddit blocks the anonymous .json endpoint (403) from datacenter IPs, so we
+ * authenticate with application-only OAuth (client_credentials). Requires a
+ * "script" app registered at reddit.com/prefs/apps.
+ */
+async function getRedditToken(): Promise<string | null> {
+  const id = process.env.REDDIT_CLIENT_ID;
+  const secret = process.env.REDDIT_CLIENT_SECRET;
+  if (!id || !secret) return null;
+
+  const res = await fetch("https://www.reddit.com/api/v1/access_token", {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${Buffer.from(`${id}:${secret}`).toString("base64")}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+      "User-Agent": USER_AGENT,
+    },
+    body: "grant_type=client_credentials",
+    cache: "no-store",
+  });
+  if (!res.ok) return null;
+
+  const data = (await res.json()) as { access_token?: string };
+  return data.access_token ?? null;
+}
+
 async function fetchPage(
+  token: string,
   subreddit: string,
   after?: string,
 ): Promise<RedditListing | null> {
-  const url = new URL(`https://www.reddit.com/r/${subreddit}/new.json`);
+  const url = new URL(`https://oauth.reddit.com/r/${subreddit}/new`);
   url.searchParams.set("limit", "100");
+  url.searchParams.set("raw_json", "1");
   if (after) url.searchParams.set("after", after);
 
   const res = await fetch(url.toString(), {
-    headers: { "User-Agent": "Guardurai/1.0 (scam-protection-tool)" },
-    next: { revalidate: 0 },
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "User-Agent": USER_AGENT,
+    },
+    cache: "no-store",
   });
   if (!res.ok) return null;
   return res.json() as Promise<RedditListing>;
@@ -89,6 +122,18 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const token = await getRedditToken();
+  if (!token) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error:
+          "Reddit auth failed — set REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET (script app at reddit.com/prefs/apps).",
+      },
+      { status: 502 },
+    );
+  }
+
   const searchParams = new URL(request.url).searchParams;
   const maxPages = Math.min(parseInt(searchParams.get("pages") ?? "3", 10), 10);
 
@@ -106,7 +151,7 @@ export async function GET(request: Request) {
     let after: string | undefined;
 
     for (let page = 0; page < maxPages; page++) {
-      const listing = await fetchPage(subreddit, after);
+      const listing = await fetchPage(token, subreddit, after);
       if (!listing) break;
       posts.push(...listing.data.children.map((c) => c.data));
       if (!listing.data.after) break;
