@@ -1,6 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { checkUrlsInText } from "@/app/lib/urlReputation";
 import { lookupCommunityReports } from "@/app/lib/communityReports";
+import { getUserId } from "@/app/lib/auth";
+import { notifyGuardianOfScam } from "@/app/lib/family";
 
 export const runtime = "nodejs";
 export const maxDuration = 10;
@@ -28,8 +30,9 @@ export async function POST(request: Request) {
     lookupCommunityReports(url),
   ]);
 
+  type Risk = "safe" | "suspicious" | "likely_scam";
   const flags: string[] = [];
-  let riskLevel: "safe" | "suspicious" | "likely_scam" = "safe";
+  let riskLevel: Risk = "safe";
 
   // Community database matches are the strongest signal.
   for (const m of communityMatches) {
@@ -56,5 +59,29 @@ export async function POST(request: Request) {
     }
   }
 
-  return NextResponse.json({ riskLevel, flags, communityMatches });
+  // If a signed-in family member lands on a known scam site, alert their
+  // guardian. Only runs on the rare likely_scam case, so it adds no latency to
+  // normal browsing; the email send is deduped (per member/domain/day).
+  if (riskLevel === "likely_scam") {
+    const userId = await getUserId();
+    if (userId) {
+      let host = url;
+      try {
+        host = new URL(url).hostname.replace(/^www\./, "").toLowerCase();
+      } catch {
+        /* keep raw url */
+      }
+      const summary = `Visited ${host} — ${flags[0] ?? "a known scam site"}.`;
+      after(() =>
+        void notifyGuardianOfScam(userId, {
+          summary,
+          detectedType: "Website visit",
+          dedupKey: host,
+        }),
+      );
+    }
+  }
+
+  const finalRisk: Risk = riskLevel;
+  return NextResponse.json({ riskLevel: finalRisk, flags, communityMatches });
 }

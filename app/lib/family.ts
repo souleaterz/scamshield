@@ -207,8 +207,9 @@ export async function notifyGuardianOfScam(
       <div style="font-family:-apple-system,Segoe UI,sans-serif;max-width:520px">
         <h2 style="color:#0f172a">⚠️ Possible scam detected</h2>
         <p style="color:#334155;font-size:15px">
-          <strong>${escapeHtml(target.memberLabel)}</strong> just ran a check on
-          Guardurai that came back as a <strong style="color:#ef4444">likely scam</strong>.
+          <strong>${escapeHtml(target.memberLabel)}</strong> just encountered
+          something Guardurai flagged as a
+          <strong style="color:#ef4444">likely scam</strong>.
         </p>
         <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:14px;margin:14px 0">
           <p style="margin:0;color:#7f1d1d;font-size:14px">
