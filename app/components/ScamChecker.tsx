@@ -16,7 +16,6 @@ import CompanyVerdictCard from "@/app/components/CompanyVerdictCard";
 import ShareButton from "@/app/components/ShareButton";
 import ReportWithCommentForm from "@/app/components/ReportWithCommentForm";
 import PricingPlans from "@/app/components/PricingPlans";
-import AdSlot from "@/app/components/AdSlot";
 import ManageBilling from "@/app/components/ManageBilling";
 
 interface AttachedImage {
@@ -81,8 +80,6 @@ export default function ScamChecker({
   const [loading, setLoading] = useState(false);
   const [dragging, setDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const showAds = tier === "free";
 
   // Auto-detect email headers live as the user types
   const headersDetected =
@@ -457,8 +454,6 @@ export default function ScamChecker({
       {companyResult && (
         <CompanyVerdictCard result={companyResult} />
       )}
-
-      {showAds && !verdict && !personResult && !companyResult && !limitReached && <AdSlot />}
     </>
   );
 }
