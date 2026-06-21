@@ -6,10 +6,11 @@ import type { PaidTier } from "@/app/lib/stripe";
 
 const PERKS = [
   "3-day free trial — cancel any time",
-  "Real-time extension protection on every page",
-  "200 checks per day",
-  "Full red-flag breakdown (Sonnet model)",
-  "No ads",
+  "Unlimited scam checks (free plan: 3 per day)",
+  "Full red-flag breakdown (advanced AI model)",
+  "Photo & identity checks — spot romance & catfish scams",
+  "Company & FCA register checks",
+  "Check history + no ads",
 ];
 
 export default function PricingPlans({
@@ -95,6 +96,11 @@ export default function PricingPlans({
           No charge for 3 days. Cancel before then and pay nothing.
         </p>
       </div>
+
+      <p className="mt-4 text-center text-xs text-slate-500">
+        <span className="font-medium text-slate-600">Free plan</span> includes
+        real-time scam-site protection for everyone — plus 3 checks a day.
+      </p>
 
       {message && (
         <p className="mt-3 text-center text-sm text-slate-500">{message}</p>

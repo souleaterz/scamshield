@@ -3,7 +3,7 @@ import type { RiskLevel, Tier } from "@/app/lib/scamAnalysis";
 
 /** Daily check allowance per identifier, by tier. */
 export const DAILY_LIMITS: Record<Tier, number> = {
-  free: 1,
+  free: 3,
   pro: 200,
 };
 
