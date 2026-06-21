@@ -298,11 +298,21 @@ export async function generateMetadata({
   const canonical = `${SITE_URL}/c/${entity.entity_type}/${entity.slug}`;
   const title = `Is ${entity.display_name} a scam? — ${riskLabel} | Guardurai`;
   const description = `Is the ${noun} ${entity.display_name} a scam? Guardurai's verdict: ${riskLabel}. Checked ${entity.check_count} time${entity.check_count !== 1 ? "s" : ""} — see the warning signs, advice, and real community reports.`;
+
+  // Anti-spam: only let Google index pages with genuine value — a real risk
+  // verdict or repeated checks. Thin "safe, checked once" pages stay out of the
+  // index (but still crawlable) so the indexed corpus stays high-quality.
+  const indexable =
+    entity.risk_level === "likely_scam" ||
+    entity.risk_level === "suspicious" ||
+    entity.check_count >= 3;
+
   return {
     title,
     description,
     alternates: { canonical },
     openGraph: { title, description, url: canonical, type: "article" },
+    robots: indexable ? undefined : { index: false, follow: true },
   };
 }
 

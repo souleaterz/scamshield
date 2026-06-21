@@ -46,6 +46,28 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-slate-50">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify([
+              {
+                "@context": "https://schema.org",
+                "@type": "Organization",
+                name: SITE_NAME,
+                url: SITE_URL,
+                logo: `${SITE_URL}/apple-icon.png`,
+                description:
+                  "AI-powered scam and phishing protection. Check links, messages, phone numbers, emails, companies, and photos for fraud.",
+              },
+              {
+                "@context": "https://schema.org",
+                "@type": "WebSite",
+                name: SITE_NAME,
+                url: SITE_URL,
+              },
+            ]),
+          }}
+        />
         <AuthHeader />
         <ExtensionCTA />
         {children}

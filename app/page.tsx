@@ -45,6 +45,20 @@ export default async function Home({
       </Suspense>
 
       <footer className="mt-auto space-y-2 pt-6 text-center text-xs text-slate-400">
+        <p className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+          <span className="text-slate-500">Browse reported scams:</span>
+          <Link href="/c/domain" className="font-medium text-blue-600 hover:text-blue-700">
+            Websites
+          </Link>
+          <span aria-hidden>·</span>
+          <Link href="/c/phone" className="font-medium text-blue-600 hover:text-blue-700">
+            Phone numbers
+          </Link>
+          <span aria-hidden>·</span>
+          <Link href="/c/company" className="font-medium text-blue-600 hover:text-blue-700">
+            Companies
+          </Link>
+        </p>
         <p>
           <Link
             href="/scams"

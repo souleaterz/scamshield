@@ -9,10 +9,13 @@ async function getEntityPageUrls(): Promise<MetadataRoute.Sitemap> {
   const supabase = getSupabaseAdmin();
   if (!supabase) return [];
 
-  // Fetch up to 5 000 entity pages, highest check-count first
+  // Only submit indexable pages — risk verdicts or repeatedly-checked entities.
+  // This must match the noindex heuristic on the entity page so the sitemap
+  // never advertises a noindex URL (which Google treats as a quality signal).
   const { data, error } = await supabase
     .from("entity_pages")
     .select("entity_type, slug, last_checked_at, risk_level, check_count")
+    .or("risk_level.in.(likely_scam,suspicious),check_count.gte.3")
     .order("check_count", { ascending: false })
     .limit(5000);
 
