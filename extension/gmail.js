@@ -160,7 +160,7 @@
         panel.innerHTML = renderMsg("Couldn't reach Guardurai. Check your connection.");
       } else if (resp.limitReached) {
         panel.innerHTML = renderMsg(
-          'You\'ve used today\'s free check. <a href="https://scamshield-roan.vercel.app" target="_blank" rel="noreferrer">Upgrade →</a>',
+          'You\'ve used today\'s free check. <a href="https://guardurai.com" target="_blank" rel="noreferrer">Upgrade →</a>',
           true,
         );
       } else if (!resp.ok) {
@@ -183,7 +183,7 @@
           `<div class="flag"><span class="dot">•</span><span>${esc(f)}</span></div>`,
       )
       .join("");
-    const url = `https://scamshield-roan.vercel.app/#r=${encodeURIComponent(JSON.stringify(v))}`;
+    const url = `https://guardurai.com/#r=${encodeURIComponent(JSON.stringify(v))}`;
     return `
       <div class="row">
         <span class="badge" style="background:${color}">${esc(label)}</span>

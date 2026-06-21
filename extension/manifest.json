@@ -4,7 +4,7 @@
   "version": "1.4.0",
   "description": "Guardurai uses AI to detect scams, verify companies, and protect you online — right-click any text to check it instantly.",
   "permissions": ["contextMenus", "scripting", "activeTab", "storage"],
-  "host_permissions": ["https://scamshield-roan.vercel.app/*", "<all_urls>"],
+  "host_permissions": ["https://guardurai.com/*", "<all_urls>"],
   "content_scripts": [
     {
       "matches": ["http://*/*", "https://*/*"],

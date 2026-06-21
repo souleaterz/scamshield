@@ -20,7 +20,7 @@ Firefox: `about:debugging` → **This Firefox** → **Load Temporary Add-on** �
 The API endpoint is set in [`config.js`](config.js):
 
 ```js
-const SCAMSHIELD_API = "https://scamshield-roan.vercel.app";
+const SCAMSHIELD_API = "https://guardurai.com";
 ```
 
 To test against a local dev server, set it to `http://localhost:3000` **and** add that

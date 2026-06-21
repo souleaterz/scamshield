@@ -1,5 +1,5 @@
 // Keep in sync with config.js (which the popup uses).
-const GUARDURAI_API = "https://scamshield-roan.vercel.app";
+const GUARDURAI_API = "https://guardurai.com";
 
 // In-memory cache for passive checks: domain → { result, expires }.
 // Service workers can restart, clearing this cache — that's fine, passive checks are cheap.

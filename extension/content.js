@@ -116,7 +116,7 @@
           ${topFlag ? `<div id="sub">${topFlag}</div>` : ""}
         </div>
         <div id="btns">
-          <a id="ai" href="https://scamshield-roan.vercel.app/?url=${encodeURIComponent(location.href)}" target="_blank" rel="noopener noreferrer">Check with AI</a>
+          <a id="ai" href="https://guardurai.com/?url=${encodeURIComponent(location.href)}" target="_blank" rel="noopener noreferrer">Check with AI</a>
           <button id="dismiss">Dismiss</button>
         </div>
       </div>`;
