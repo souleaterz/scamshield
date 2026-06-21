@@ -259,15 +259,17 @@ export function computeRealScore(params: {
 }): number {
   const { faceDetected, reverseImage, aiDetection, claudeAiScore } = params;
 
-  let score = 68;
+  let score = 82;
 
   if (!faceDetected) score -= 35;
 
-  // Sightengine score — the strongest hard signal (0–50 penalty)
+  // Sightengine score — a strong hard signal (0–50 penalty). But top-tier
+  // generators can fool it (return ~0), so it can't be the only line of defence.
   if (aiDetection) score -= Math.round(aiDetection.aiScore * 50);
 
-  // Claude visual score — 0–30 penalty
-  score -= Math.round((claudeAiScore / 100) * 30);
+  // Claude visual judgement — weighted heavily (0–45) precisely because it's the
+  // backstop when a good generator slips past Sightengine.
+  score -= Math.round((claudeAiScore / 100) * 45);
 
   if (reverseImage) {
     if (reverseImage.flags.some((f) => f.includes("AI image generator"))) score -= 45;
@@ -275,6 +277,11 @@ export function computeRealScore(params: {
     if (reverseImage.flags.some((f) => f.includes("exact copies"))) score -= 25;
     if (reverseImage.flags.some((f) => f.includes("social media profiles"))) score -= 20;
   }
+
+  // A confident AI verdict from EITHER detector forces a fail. Modern generators
+  // can beat one detector but rarely both, and a false "real" is the costly error.
+  const strongAi = claudeAiScore >= 78 || (aiDetection?.aiScore ?? 0) >= 0.6;
+  if (strongAi) score = Math.min(score, 22);
 
   return Math.max(0, Math.min(100, Math.round(score)));
 }
