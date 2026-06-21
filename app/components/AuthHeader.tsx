@@ -38,6 +38,14 @@ export default async function AuthHeader() {
         </SignUpButton>
       </Show>
       <Show when="signed-in">
+        {tier === "family" && (
+          <Link
+            href="/family"
+            className="text-sm font-medium text-slate-600 hover:text-slate-900"
+          >
+            Family
+          </Link>
+        )}
         <Link
           href="/history"
           className="text-sm font-medium text-slate-600 hover:text-slate-900"
