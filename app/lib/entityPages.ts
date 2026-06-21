@@ -302,6 +302,48 @@ export async function getScamReportCount(
   return (data?.report_count as number | null) ?? 0;
 }
 
+/** Entities of a given type for the hub/category page (most-checked first). */
+export async function getEntitiesByType(
+  type: EntityType,
+  limit = 60,
+): Promise<EntityPage[]> {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return [];
+
+  const { data, error } = await supabase
+    .from("entity_pages")
+    .select("id, entity_type, slug, display_name, risk_level, check_count, last_checked_at")
+    .eq("entity_type", type)
+    .in("risk_level", ["likely_scam", "suspicious"])
+    .order("check_count", { ascending: false })
+    .limit(limit);
+
+  if (error) return [];
+  return (data ?? []) as EntityPage[];
+}
+
+/** Other recently-flagged entities of the same type — for internal linking / SEO. */
+export async function getRelatedEntities(
+  type: EntityType,
+  excludeSlug: string,
+  limit = 6,
+): Promise<EntityPage[]> {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return [];
+
+  const { data, error } = await supabase
+    .from("entity_pages")
+    .select("id, entity_type, slug, display_name, risk_level, check_count, last_checked_at")
+    .eq("entity_type", type)
+    .neq("slug", excludeSlug)
+    .in("risk_level", ["likely_scam", "suspicious"])
+    .order("last_checked_at", { ascending: false })
+    .limit(limit);
+
+  if (error) return [];
+  return (data ?? []) as EntityPage[];
+}
+
 async function _getRecentRiskyEntities(): Promise<EntityPage[]> {
   const supabase = getSupabaseAdmin();
   if (!supabase) return [];
