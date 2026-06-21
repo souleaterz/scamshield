@@ -98,6 +98,31 @@ export async function flagEntityPage(
   return (data as string | null) ?? null;
 }
 
+/**
+ * Creates or updates an entity page from a threat-intelligence feed
+ * (e.g. URLhaus, FCA). No comment is attached — feeds aren't community posts.
+ * Returns the entity page UUID.
+ */
+export async function upsertEntityPageFromFeed(
+  type: EntityType,
+  slug: string,
+  displayName: string,
+  riskLevel: RiskLevel,
+  opts: { source: string; sourceLabel: string; summary: string; redFlags?: string[] },
+): Promise<string | null> {
+  const verdictData = {
+    source: opts.source,
+    summary: opts.summary,
+    risk_level: riskLevel,
+    red_flags: opts.redFlags ?? [],
+    advice: [
+      "Do not click links, enter details, or download anything from this source",
+      "Report to Action Fraud (UK: actionfraud.police.uk) or the FTC (US: reportfraud.ftc.gov)",
+    ],
+  };
+  return upsertEntityPage(type, slug, displayName, riskLevel, verdictData);
+}
+
 export interface RedditPost {
   title: string;
   selftext: string;

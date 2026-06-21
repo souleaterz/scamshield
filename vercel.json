@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/sync-reddit-scams",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/sync-urlhaus-scams",
+      "schedule": "0 7 * * *"
     }
   ]
 }
