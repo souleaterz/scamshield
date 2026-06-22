@@ -72,9 +72,13 @@ export default async function JoinPage({
               Sign in (or create a free account) to accept your Guardurai
               protection invite.
             </p>
-            <SignInButton mode="modal" forceRedirectUrl={here}>
+            <SignInButton
+              mode="modal"
+              forceRedirectUrl={here}
+              signUpForceRedirectUrl={here}
+            >
               <button className="mt-5 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700">
-                Sign in to accept
+                Sign in or create an account to accept
               </button>
             </SignInButton>
           </>

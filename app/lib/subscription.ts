@@ -79,12 +79,45 @@ export async function getTierForUser(userId: string | null): Promise<Tier> {
   const supabase = getSupabaseAdmin();
   if (!supabase) return "free";
 
-  const { data, error } = await supabase
+  const { data } = await supabase
     .from("subscriptions")
     .select("tier")
     .eq("user_id", userId)
     .maybeSingle();
 
-  if (error || !data) return "free";
-  return VALID_TIERS.includes(data.tier as Tier) ? (data.tier as Tier) : "free";
+  const ownTier =
+    data && VALID_TIERS.includes(data.tier as Tier) ? (data.tier as Tier) : "free";
+  if (ownTier !== "free") return ownTier;
+
+  // Not a paying subscriber — but protected members of an active Family plan
+  // get Pro-level access (unlimited checks, photo/company checks, no ads).
+  if (await isProtectedFamilyMember(supabase, userId)) return "pro";
+
+  return "free";
+}
+
+/**
+ * True if this user is an accepted member of a guardian who currently holds a
+ * Family subscription. (tier only equals 'family' while the sub is active/
+ * trialing, since the webhook resets it to 'free' otherwise.)
+ */
+async function isProtectedFamilyMember(
+  supabase: NonNullable<ReturnType<typeof getSupabaseAdmin>>,
+  userId: string,
+): Promise<boolean> {
+  const { data: link } = await supabase
+    .from("family_members")
+    .select("guardian_user_id")
+    .eq("member_user_id", userId)
+    .eq("status", "active")
+    .maybeSingle();
+  if (!link?.guardian_user_id) return false;
+
+  const { data: guardianSub } = await supabase
+    .from("subscriptions")
+    .select("tier")
+    .eq("user_id", link.guardian_user_id)
+    .maybeSingle();
+
+  return guardianSub?.tier === "family";
 }
