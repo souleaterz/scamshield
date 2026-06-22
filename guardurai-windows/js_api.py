@@ -68,6 +68,50 @@ class JsApi:
         except FileNotFoundError:
             return json.dumps({"enabled": False})
 
+    def open_external(self, url: str) -> str:
+        import webbrowser
+        try:
+            webbrowser.open(url)
+            return json.dumps({"ok": True})
+        except Exception as e:
+            return json.dumps({"error": str(e)})
+
+    # ── Account ───────────────────────────────────────────────────────────────
+
+    def get_account(self) -> str:
+        email = db.get_setting("account_email", "")
+        if not email:
+            return json.dumps({"signed_in": False})
+        return json.dumps({
+            "signed_in": True,
+            "email": email,
+            "name": db.get_setting("account_name", email),
+            "tier": db.get_setting("account_tier", "free"),
+        })
+
+    def link_account(self, email: str) -> str:
+        import requests as _req
+        try:
+            resp = _req.get(
+                "https://guardurai.com/api/desktop/ping",
+                params={"email": email},
+                timeout=10,
+            )
+            data = resp.json()
+            if resp.status_code == 200:
+                db.set_setting("account_email", email)
+                db.set_setting("account_name", data.get("name", email.split("@")[0]))
+                db.set_setting("account_tier", data.get("tier", "free"))
+                return json.dumps({"signed_in": True, **data})
+            return json.dumps({"error": data.get("error", "not_found")})
+        except Exception as e:
+            return json.dumps({"error": str(e)})
+
+    def unlink_account(self) -> str:
+        for key in ("account_email", "account_name", "account_tier"):
+            db.set_setting(key, "")
+        return json.dumps({"ok": True})
+
     def set_autostart(self, enable: bool) -> str:
         import sys, os, winreg
         key = r"Software\Microsoft\Windows\CurrentVersion\Run"

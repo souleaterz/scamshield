@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Guardurai</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -24,9 +25,9 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
           Dashboard
         </a>
-        <a class="nav-item" data-page="scan">
+        <a class="nav-item" data-page="check">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          Scan
+          Check
         </a>
         <a class="nav-item" data-page="history">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
@@ -72,15 +73,15 @@
 
         <div class="stat-grid">
           <div class="stat-card">
-            <div class="stat-value" id="stat-today">—</div>
+            <div class="stat-value" id="stat-today">0</div>
             <div class="stat-label">Checks today</div>
           </div>
           <div class="stat-card">
-            <div class="stat-value danger" id="stat-threats">—</div>
+            <div class="stat-value danger" id="stat-threats">0</div>
             <div class="stat-label">Scams blocked</div>
           </div>
           <div class="stat-card">
-            <div class="stat-value" id="stat-total">—</div>
+            <div class="stat-value" id="stat-total">0</div>
             <div class="stat-label">Total checks</div>
           </div>
         </div>
@@ -88,23 +89,23 @@
         <div class="section">
           <h3 class="section-title">Recent activity</h3>
           <div id="recent-list" class="activity-list">
-            <div class="empty-state">No checks yet — copy a link or use the Scan tab.</div>
+            <div class="empty-state">No checks yet — copy a link or use the Check tab.</div>
           </div>
         </div>
       </div>
 
-      <!-- Scan -->
-      <div id="page-scan" class="page">
+      <!-- Check -->
+      <div id="page-check" class="page">
         <div class="page-header">
-          <h1>Scan</h1>
+          <h1>Check</h1>
           <p class="page-sub">Check any message, link, phone number, or email</p>
         </div>
 
         <div class="scan-card">
           <textarea id="scan-input" placeholder="Paste anything suspicious here — a text message, link, phone number, email, or company name…" rows="6"></textarea>
           <div class="scan-actions">
-            <button class="btn btn-primary" id="scan-btn" onclick="runScan()">Check for scams</button>
-            <button class="btn btn-ghost" onclick="clearScan()">Clear</button>
+            <button class="btn btn-primary" id="scan-btn" onclick="runCheck()">Check for scams</button>
+            <button class="btn btn-ghost" onclick="clearCheck()">Clear</button>
           </div>
         </div>
 
@@ -175,16 +176,51 @@
           </div>
         </div>
 
+        <!-- Account -->
         <div class="settings-group">
           <h3 class="group-title">Account</h3>
-          <div class="account-card">
-            <p>Sign in to <strong>guardurai.com</strong> for unlimited checks and Pro features.</p>
-            <a href="https://guardurai.com/pricing" class="btn btn-primary" onclick="openExternal('https://guardurai.com/pricing'); return false;">Upgrade to Pro</a>
+
+          <!-- Signed-in state -->
+          <div id="account-connected" class="account-card hidden">
+            <div class="account-avatar" id="account-avatar">G</div>
+            <div class="account-info">
+              <div class="account-name" id="account-name">Loading…</div>
+              <div id="account-tier-badge" class="tier-badge tier-free">Free</div>
+            </div>
+            <button class="btn btn-ghost" onclick="unlinkAccount()">Sign out</button>
+          </div>
+
+          <!-- Signed-out state -->
+          <div id="account-disconnected" class="account-card account-card--col">
+            <div class="account-info">
+              <div class="account-name">Not signed in</div>
+              <div class="account-desc">Sign in for unlimited checks and Pro features</div>
+            </div>
+            <button class="btn btn-primary" onclick="openSignIn()">Login →</button>
+          </div>
+
+          <!-- Email connect form (shown below disconnected card) -->
+          <div id="account-connect-form" class="connect-form">
+            <p class="connect-hint">After signing in on the website, enter your email to sync your account:</p>
+            <div class="connect-row">
+              <input type="email" id="account-email-input" class="connect-input" placeholder="your@email.com">
+              <button class="btn btn-primary" id="connect-btn" onclick="linkAccount()">Connect</button>
+            </div>
+            <div id="account-error" class="account-error hidden"></div>
           </div>
         </div>
+
       </div>
 
     </main>
+  </div>
+
+  <!-- History detail overlay -->
+  <div id="detail-overlay" class="overlay hidden">
+    <div class="overlay-card">
+      <button class="overlay-close" onclick="closeDetail()">✕</button>
+      <div id="detail-content"></div>
+    </div>
   </div>
 
   <script src="js/app.js"></script>

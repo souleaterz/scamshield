@@ -37,7 +37,7 @@ Source: "dist\Guardurai.exe"; DestDir: "{app}"; Flags: ignoreversion
 [Icons]
 Name: "{group}\Guardurai"; Filename: "{app}\Guardurai.exe"; Comment: "Real-time scam protection"
 Name: "{group}\Uninstall Guardurai"; Filename: "{uninstallexe}"
-Name: "{commondesktop}\Guardurai"; Filename: "{app}\Guardurai.exe"; Tasks: desktopicon; Comment: "Real-time scam protection"
+Name: "{userdesktop}\Guardurai"; Filename: "{app}\Guardurai.exe"; Tasks: desktopicon; Comment: "Real-time scam protection"
 
 [Registry]
 ; Auto-start entry (only when user ticks the startup task)
