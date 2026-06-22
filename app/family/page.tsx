@@ -2,7 +2,13 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getUserId } from "@/app/lib/auth";
 import { getTierForUser } from "@/app/lib/subscription";
-import { listMembers, getAlertEmail, inviteUrl, MAX_MEMBERS } from "@/app/lib/family";
+import {
+  listMembers,
+  getAlertEmail,
+  getGuardianAlerts,
+  inviteUrl,
+  MAX_MEMBERS,
+} from "@/app/lib/family";
 import FamilyDashboard from "./FamilyDashboard";
 
 export const metadata = { title: "Family protection — Guardurai" };
@@ -39,9 +45,10 @@ export default async function FamilyPage() {
     );
   }
 
-  const [members, alertEmail] = await Promise.all([
+  const [members, alertEmail, alerts] = await Promise.all([
     listMembers(userId),
     getAlertEmail(userId),
+    getGuardianAlerts(userId),
   ]);
   const initialMembers = members.map((m) => ({
     ...m,
@@ -49,7 +56,7 @@ export default async function FamilyPage() {
   }));
 
   return (
-    <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-12">
+    <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-12">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-xl font-bold text-slate-900">Family protection</h1>
         <Link
@@ -64,6 +71,7 @@ export default async function FamilyPage() {
         initialMembers={initialMembers}
         initialAlertEmail={alertEmail}
         maxMembers={MAX_MEMBERS}
+        alerts={alerts}
       />
     </main>
   );

@@ -12,6 +12,13 @@ export interface FamilyMember {
   invite_code: string;
   status: "pending" | "active" | "revoked";
   created_at: string;
+  accepted_at: string | null;
+}
+
+export interface GuardianAlert {
+  memberLabel: string;
+  scam: string;
+  createdAt: string;
 }
 
 function code(): string {
@@ -25,7 +32,7 @@ export async function listMembers(guardianUserId: string): Promise<FamilyMember[
   if (!supabase) return [];
   const { data } = await supabase
     .from("family_members")
-    .select("id, member_label, member_user_id, invite_code, status, created_at")
+    .select("id, member_label, member_user_id, invite_code, status, created_at, accepted_at")
     .eq("guardian_user_id", guardianUserId)
     .neq("status", "revoked")
     .order("created_at", { ascending: true });
@@ -76,6 +83,41 @@ export async function revokeMember(
 
 export function inviteUrl(inviteCode: string): string {
   return `${SITE_URL}/family/join?code=${encodeURIComponent(inviteCode)}`;
+}
+
+/** Recent scam alerts raised for this guardian's protected members (activity feed). */
+export async function getGuardianAlerts(
+  guardianUserId: string,
+  limit = 15,
+): Promise<GuardianAlert[]> {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return [];
+
+  const { data: members } = await supabase
+    .from("family_members")
+    .select("member_user_id, member_label")
+    .eq("guardian_user_id", guardianUserId)
+    .eq("status", "active")
+    .not("member_user_id", "is", null);
+  if (!members || members.length === 0) return [];
+
+  const labelByUser = new Map<string, string>(
+    members.map((m) => [m.member_user_id as string, m.member_label as string]),
+  );
+
+  const { data: alerts } = await supabase
+    .from("guardian_alerts")
+    .select("member_user_id, dedup_key, created_at")
+    .in("member_user_id", [...labelByUser.keys()])
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  return (alerts ?? []).map((a) => ({
+    memberLabel: labelByUser.get(a.member_user_id as string) ?? "A family member",
+    // dedup_key is stored as "YYYY-MM-DD:<host or type>" — strip the date prefix.
+    scam: String(a.dedup_key).replace(/^\d{4}-\d{2}-\d{2}:/, ""),
+    createdAt: a.created_at as string,
+  }));
 }
 
 // ── Alert settings ───────────────────────────────────────────────────────────
