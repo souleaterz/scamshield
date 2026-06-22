@@ -12,8 +12,9 @@ export default async function AuthHeader() {
 
   const userId = await getUserId();
   const tier = await getTierForUser(userId);
-  // Family is the top plan, so only hide Upgrade for those subscribers.
-  const showUpgrade = tier !== "family";
+  // Only signed-in free users see Upgrade — paid users and protected family
+  // members (who inherit Pro) don't, and signed-out visitors use Sign up.
+  const showUpgrade = userId !== null && tier === "free";
 
   return (
     <header className="flex items-center justify-end gap-3 border-b border-slate-200 bg-white/80 px-4 py-2.5 backdrop-blur">
