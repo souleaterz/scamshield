@@ -1,0 +1,350 @@
+/* Guardurai Windows App — SPA controller */
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let _history = [];
+let _historyFilter = 'all';
+let _protectionActive = true;
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+  setupNav();
+  await loadDashboard();
+  await loadSettings();
+});
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+function setupNav() {
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', () => navigate(item.dataset.page));
+  });
+}
+
+function navigate(page) {
+  document.querySelectorAll('.nav-item').forEach(el =>
+    el.classList.toggle('active', el.dataset.page === page));
+  document.querySelectorAll('.page').forEach(el =>
+    el.classList.toggle('active', el.id === `page-${page}`));
+
+  if (page === 'history') loadHistory();
+  if (page === 'dashboard') refreshStats();
+}
+
+// ── Dashboard ─────────────────────────────────────────────────────────────────
+async function loadDashboard() {
+  await Promise.all([refreshStats(), refreshStatus()]);
+}
+
+async function refreshStats() {
+  const raw = await callPy('get_stats');
+  if (!raw) return;
+  const stats = JSON.parse(raw);
+  setText('stat-today', stats.today ?? 0);
+  setText('stat-threats', stats.threats_blocked ?? 0);
+  setText('stat-total', stats.total ?? 0);
+
+  // Recent activity (last 5)
+  const histRaw = await callPy('get_history');
+  if (!histRaw) return;
+  const items = JSON.parse(histRaw).slice(0, 5);
+  const list = document.getElementById('recent-list');
+  if (items.length === 0) {
+    list.innerHTML = '<div class="empty-state">No checks yet — copy a link or use the Scan tab.</div>';
+    return;
+  }
+  list.innerHTML = items.map(item => activityItemHtml(item)).join('');
+}
+
+async function refreshStatus() {
+  const raw = await callPy('get_protection_status');
+  if (!raw) return;
+  const { active } = JSON.parse(raw);
+  _protectionActive = active;
+  applyProtectionState(active);
+}
+
+function applyProtectionState(active) {
+  _protectionActive = active;
+
+  const headline = document.getElementById('status-headline');
+  const sub = document.getElementById('status-sub');
+  const btn = document.getElementById('toggle-btn');
+  const card = document.getElementById('status-card');
+  const poly = document.getElementById('shield-poly');
+  const mark = document.getElementById('shield-mark');
+  const badge = document.getElementById('sidebar-badge');
+  const label = badge?.querySelector('.badge-label');
+
+  if (active) {
+    headline.textContent = "You're protected";
+    sub.textContent = 'Guardurai is actively monitoring your browsing and clipboard.';
+    btn.textContent = 'Pause protection';
+    card.style.borderColor = '';
+    poly.setAttribute('fill', '#10b981');
+    mark.setAttribute('points', '20,32 28,42 44,22');
+    mark.setAttribute('stroke', 'white');
+    badge?.classList.remove('paused');
+    if (label) label.textContent = 'Protected';
+  } else {
+    headline.textContent = 'Protection paused';
+    sub.textContent = 'Real-time monitoring is off. Click Resume to re-enable.';
+    btn.textContent = 'Resume protection';
+    card.style.borderColor = '#ef4444';
+    poly.setAttribute('fill', '#374151');
+    mark.setAttribute('points', '22,22 42,42 M42,22 22,42');
+    mark.setAttribute('stroke', '#6b7280');
+    badge?.classList.add('paused');
+    if (label) label.textContent = 'Paused';
+  }
+}
+
+async function toggleProtection() {
+  const raw = await callPy('toggle_protection');
+  if (!raw) return;
+  const { active } = JSON.parse(raw);
+  applyProtectionState(active);
+}
+
+// ── Scan ──────────────────────────────────────────────────────────────────────
+async function runScan() {
+  const input = document.getElementById('scan-input');
+  const text = input.value.trim();
+  if (!text) return;
+
+  const btn = document.getElementById('scan-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Checking…';
+
+  const resultEl = document.getElementById('scan-result');
+  resultEl.classList.add('hidden');
+
+  const raw = await callPy('check', text);
+  btn.disabled = false;
+  btn.textContent = 'Check for scams';
+
+  if (!raw) return;
+  const result = JSON.parse(raw);
+
+  if (result.error) {
+    resultEl.className = 'result-card';
+    resultEl.innerHTML = `<p style="color:var(--danger)">${escHtml(result.error)}</p>`;
+    return;
+  }
+
+  resultEl.className = 'result-card';
+  resultEl.innerHTML = renderResult(result);
+  refreshStats();
+}
+
+function clearScan() {
+  document.getElementById('scan-input').value = '';
+  const r = document.getElementById('scan-result');
+  r.className = 'result-card hidden';
+  r.innerHTML = '';
+}
+
+function renderResult(result) {
+  const risk = result.risk_level ?? 'safe';
+  const label = { likely_scam: 'Likely Scam', suspicious: 'Suspicious', safe: 'Safe' }[risk] ?? risk;
+  const conf = result.confidence_score != null
+    ? `Confidence: ${Math.round(result.confidence_score * 100)}%`
+    : '';
+
+  const redFlags = (result.red_flags ?? []).map(f => `<li>${escHtml(f)}</li>`).join('');
+  const safeSignals = (result.safe_signals ?? []).map(f => `<li>${escHtml(f)}</li>`).join('');
+
+  return `
+    <div class="result-header">
+      <span class="result-badge ${risk}">${label}</span>
+      <span class="result-confidence">${escHtml(conf)}</span>
+    </div>
+    ${result.summary ? `<p class="result-summary">${escHtml(result.summary)}</p>` : ''}
+    ${redFlags ? `
+      <div class="result-section">
+        <div class="result-section-title">Red flags</div>
+        <ul class="result-list red">${redFlags}</ul>
+      </div>` : ''}
+    ${safeSignals ? `
+      <div class="result-section">
+        <div class="result-section-title">Safe signals</div>
+        <ul class="result-list green">${safeSignals}</ul>
+      </div>` : ''}
+  `;
+}
+
+// ── History ───────────────────────────────────────────────────────────────────
+async function loadHistory() {
+  const raw = await callPy('get_history');
+  if (!raw) return;
+  _history = JSON.parse(raw);
+  renderHistory();
+}
+
+function filterHistory(filter, btn) {
+  _historyFilter = filter;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderHistory();
+}
+
+function renderHistory() {
+  const list = document.getElementById('history-list');
+  const items = _historyFilter === 'all'
+    ? _history
+    : _history.filter(h => h.risk_level === _historyFilter);
+
+  if (items.length === 0) {
+    list.innerHTML = '<div class="empty-state">No results for this filter.</div>';
+    return;
+  }
+  list.innerHTML = items.map(item => historyItemHtml(item)).join('');
+}
+
+function historyItemHtml(item) {
+  const risk = item.risk_level ?? 'safe';
+  const label = { likely_scam: 'Scam', suspicious: 'Suspicious', safe: 'Safe' }[risk] ?? risk;
+  const date = item.checked_at ? new Date(item.checked_at).toLocaleString() : '';
+  const src = { clipboard: 'Clipboard', browser: 'Browser', manual: 'Manual scan' }[item.source] ?? item.source;
+
+  return `
+    <div class="history-item" onclick="showDetail(${escHtml(JSON.stringify(JSON.stringify(item)))})">
+      <div class="risk-dot ${risk}"></div>
+      <div class="hi-text">
+        <div class="hi-input">${escHtml(item.input_text ?? '')}</div>
+        <div class="hi-meta">${escHtml(date)}</div>
+      </div>
+      <span class="hi-source">${escHtml(src)}</span>
+      <span class="risk-chip ${risk}">${escHtml(label)}</span>
+    </div>
+  `;
+}
+
+function showDetail(rawJson) {
+  const item = JSON.parse(rawJson);
+  const result = item.result_json ?? {};
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.innerHTML = `
+    <div class="overlay-card">
+      <button class="overlay-close" onclick="this.closest('.overlay').remove()">✕</button>
+      <h2 style="margin-bottom:16px;font-size:18px">${escHtml(item.input_text ?? '')}</h2>
+      ${renderResult(result)}
+    </div>
+  `;
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
+// ── Settings ──────────────────────────────────────────────────────────────────
+async function loadSettings() {
+  const [rawSettings, rawAutostart] = await Promise.all([
+    callPy('get_settings'),
+    callPy('is_autostart'),
+  ]);
+
+  if (rawSettings) {
+    const s = JSON.parse(rawSettings);
+    setCheck('s-browser',   s.check_browser   !== 'false');
+    setCheck('s-clipboard', s.check_clipboard !== 'false');
+    setCheck('s-notif',     s.notifications   !== 'false');
+  }
+  if (rawAutostart) {
+    const { enabled } = JSON.parse(rawAutostart);
+    setCheck('s-autostart', enabled);
+  }
+}
+
+function saveSetting(key, value) {
+  callPy('save_settings', JSON.stringify({ [key]: String(value) }));
+}
+
+async function setAutostart(enable) {
+  await callPy('set_autostart', enable);
+}
+
+function openExternal(url) {
+  callPy('open_external', url);
+}
+
+// ── Real-time protection callback (called by app.py via evaluate_js) ──────────
+window.__onProtectionResult = function({ text, result }) {
+  refreshStats();
+  // If dashboard is visible, flash the activity list
+  if (document.getElementById('page-dashboard').classList.contains('active')) {
+    refreshStats();
+  }
+};
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function activityItemHtml(item) {
+  const risk = item.risk_level ?? 'safe';
+  const label = { likely_scam: 'Scam', suspicious: 'Suspicious', safe: 'Safe' }[risk] ?? risk;
+  const date = item.checked_at ? new Date(item.checked_at).toLocaleString() : '';
+  return `
+    <div class="activity-item">
+      <div class="risk-dot ${risk}"></div>
+      <div class="activity-text">
+        <div class="activity-input">${escHtml(item.input_text ?? '')}</div>
+        <div class="activity-meta">${escHtml(date)}</div>
+      </div>
+      <span class="risk-chip ${risk}">${escHtml(label)}</span>
+    </div>
+  `;
+}
+
+async function callPy(method, ...args) {
+  try {
+    if (window.pywebview?.api) {
+      return await window.pywebview.api[method](...args);
+    }
+    // Dev mode fallback: mock responses so the UI is previewable in a browser
+    return mockPy(method, args);
+  } catch (e) {
+    console.error(`callPy(${method}) error:`, e);
+    return null;
+  }
+}
+
+function mockPy(method, args) {
+  const mocks = {
+    get_stats: () => JSON.stringify({ today: 12, threats_blocked: 3, total: 47 }),
+    get_protection_status: () => JSON.stringify({ active: true }),
+    get_history: () => JSON.stringify([
+      { input_text: 'https://amaz0n-login.tk/verify', risk_level: 'likely_scam', source: 'clipboard', checked_at: new Date(Date.now() - 3e5).toISOString(), result_json: { risk_level: 'likely_scam', summary: 'Fake Amazon phishing site using typosquatted domain.', red_flags: ['Typosquatted domain', 'TK TLD commonly used for phishing', 'No SSL'], safe_signals: [] } },
+      { input_text: 'https://bbc.co.uk/news', risk_level: 'safe', source: 'browser', checked_at: new Date(Date.now() - 9e5).toISOString(), result_json: { risk_level: 'safe', summary: 'Legitimate BBC News website.', red_flags: [], safe_signals: ['Established domain', 'Valid SSL', 'Known news outlet'] } },
+      { input_text: '+44 7890 123456', risk_level: 'suspicious', source: 'clipboard', checked_at: new Date(Date.now() - 3.6e6).toISOString(), result_json: { risk_level: 'suspicious', summary: 'Unverified UK mobile number with reported scam activity.', red_flags: ['Reported in scam databases'], safe_signals: [] } },
+    ]),
+    get_settings: () => JSON.stringify({ check_browser: 'true', check_clipboard: 'true', notifications: 'true' }),
+    is_autostart: () => JSON.stringify({ enabled: false }),
+    toggle_protection: () => JSON.stringify({ active: !_protectionActive }),
+    check: () => {
+      const text = (args && args[0]) ?? '';
+      if (text.includes('scam') || text.includes('.tk') || text.includes('verify')) {
+        return JSON.stringify({ risk_level: 'likely_scam', confidence_score: 0.95, summary: 'This looks like a scam. Suspicious domain and phishing patterns detected.', red_flags: ['Suspicious domain pattern', 'Common phishing keywords'], safe_signals: [] });
+      }
+      return JSON.stringify({ risk_level: 'safe', confidence_score: 0.88, summary: 'No immediate threats detected.', red_flags: [], safe_signals: ['No known threat indicators'] });
+    },
+    save_settings: () => JSON.stringify({ ok: true }),
+    set_autostart: () => JSON.stringify({ ok: true }),
+  };
+  const fn = mocks[method];
+  return fn ? fn() : JSON.stringify({});
+}
+
+function setText(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
+function setCheck(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.checked = val;
+}
+
+function escHtml(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}

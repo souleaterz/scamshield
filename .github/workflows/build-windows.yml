@@ -33,9 +33,24 @@ jobs:
           --windowed
           --noupx
           --name Guardurai
+          --add-data "ui;ui"
           app.py
 
-      - name: Upload .exe as artifact
+      - name: Install Inno Setup
+        run: choco install innosetup --yes --no-progress
+
+      - name: Build installer
+        working-directory: guardurai-windows
+        run: iscc guardurai.iss
+
+      - name: Upload installer as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Guardurai-Setup
+          path: guardurai-windows/Output/Guardurai-Setup.exe
+          retention-days: 30
+
+      - name: Upload raw .exe as artifact
         uses: actions/upload-artifact@v4
         with:
           name: Guardurai-Windows

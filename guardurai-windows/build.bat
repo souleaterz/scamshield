@@ -24,6 +24,7 @@ pyinstaller ^
     --windowed ^
     --noupx ^
     --name Guardurai ^
+    --add-data "ui;ui" ^
     app.py
 if errorlevel 1 ( echo Build failed. & pause & exit /b 1 )
 
