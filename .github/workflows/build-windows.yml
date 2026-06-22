@@ -31,6 +31,7 @@ jobs:
           pyinstaller
           --onefile
           --windowed
+          --noupx
           --name Guardurai
           app.py
 
@@ -39,4 +40,22 @@ jobs:
         with:
           name: Guardurai-Windows
           path: guardurai-windows/dist/Guardurai.exe
+          retention-days: 30
+
+  build-edge-extension:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Package Edge extension zip
+        # Edge accepts the same MV3 manifest as Chrome — identical zip.
+        run: |
+          cd extension
+          zip -r ../guardurai-extension-edge.zip . --exclude "*.md" --exclude ".git*"
+
+      - name: Upload Edge extension zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: Guardurai-Edge-Extension
+          path: guardurai-extension-edge.zip
           retention-days: 30

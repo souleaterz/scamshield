@@ -18,6 +18,7 @@ import pystray
 from pystray import MenuItem as Item, Menu
 
 import api
+from url_monitor import UrlMonitor
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
@@ -249,16 +250,26 @@ class TrayApp:
 
     # ── Run ───────────────────────────────────────────────────────────────────
 
+    def _on_url(self, url: str):
+        """Called by the URL monitor when the active browser tab changes."""
+        result = api.check(url)
+        self._on_result(url, result)
+
     def run(self):
         self._icon.menu = self._build_menu()
 
-        # Clipboard monitor runs in a background daemon thread.
+        # Clipboard monitor — catches links from any app.
         t = threading.Thread(target=self._monitor.run_forever, daemon=True)
         t.start()
 
+        # URL monitor — reads the browser address bar directly via UI Automation.
+        # Gives real-time protection in Chrome, Edge, Firefox, Brave, Opera, etc.
+        url_mon = UrlMonitor(on_url=self._on_url)
+        url_mon.start()
+
         _notify(
             "Guardurai is running",
-            "Real-time scam protection is active. Copy any link or message to check it.",
+            "Real-time protection active across all your browsers and apps.",
         )
 
         self._icon.run()

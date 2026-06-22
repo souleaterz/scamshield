@@ -22,6 +22,7 @@ echo [2/3] Building Guardurai.exe ...
 pyinstaller ^
     --onefile ^
     --windowed ^
+    --noupx ^
     --name Guardurai ^
     app.py
 if errorlevel 1 ( echo Build failed. & pause & exit /b 1 )
