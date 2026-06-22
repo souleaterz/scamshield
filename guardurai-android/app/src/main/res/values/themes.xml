@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- A no-action-bar platform theme; Compose draws the rest of the UI. -->
+    <style name="Theme.Guardurai" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">#1d4ed8</item>
+    </style>
+</resources>
