@@ -23,7 +23,6 @@ pyinstaller ^
     --onefile ^
     --windowed ^
     --name Guardurai ^
-    --add-data "app.py;." ^
     app.py
 if errorlevel 1 ( echo Build failed. & pause & exit /b 1 )
 

@@ -1,0 +1,42 @@
+name: Build Guardurai Windows .exe
+
+on:
+  push:
+    paths:
+      - "guardurai-windows/**"
+  workflow_dispatch:  # also allows manual trigger from the Actions tab
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: guardurai-windows/requirements.txt
+
+      - name: Install dependencies
+        working-directory: guardurai-windows
+        run: pip install -r requirements.txt
+
+      - name: Build with PyInstaller
+        working-directory: guardurai-windows
+        run: >
+          pyinstaller
+          --onefile
+          --windowed
+          --name Guardurai
+          app.py
+
+      - name: Upload .exe as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Guardurai-Windows
+          path: guardurai-windows/dist/Guardurai.exe
+          retention-days: 30
