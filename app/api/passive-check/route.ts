@@ -1,7 +1,7 @@
 import { NextResponse, after } from "next/server";
 import { checkUrlsInText } from "@/app/lib/urlReputation";
 import { lookupCommunityReports } from "@/app/lib/communityReports";
-import { getUserId } from "@/app/lib/auth";
+import { getUserIdFromRequest } from "@/app/lib/auth";
 import { notifyGuardianOfScam, recordExtensionActivity } from "@/app/lib/family";
 
 export const runtime = "nodejs";
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
 
   // A signed-in user calling this = their extension is active. Record a
   // heartbeat (non-blocking) so the Family dashboard can show protection status.
-  const userId = await getUserId();
+  const userId = await getUserIdFromRequest(request);
   if (userId) after(() => void recordExtensionActivity(userId));
 
   // Hard-signal checks only — no Claude, no RDAP. Target latency < 600ms.

@@ -76,39 +76,73 @@ class JsApi:
         except Exception as e:
             return json.dumps({"error": str(e)})
 
-    # ── Account ───────────────────────────────────────────────────────────────
+    # ── Account (device pairing) ──────────────────────────────────────────────
+
+    BASE_URL = "https://guardurai.com"
 
     def get_account(self) -> str:
-        email = db.get_setting("account_email", "")
-        if not email:
+        """Current account state. Refreshes name/tier from the server if paired."""
+        token = db.get_setting("account_token", "")
+        if not token:
             return json.dumps({"signed_in": False})
-        return json.dumps({
-            "signed_in": True,
-            "email": email,
-            "name": db.get_setting("account_name", email),
-            "tier": db.get_setting("account_tier", "free"),
-        })
-
-    def link_account(self, email: str) -> str:
+        # Re-check status so tier changes (e.g. after upgrading) show live.
         import requests as _req
         try:
             resp = _req.get(
-                "https://guardurai.com/api/desktop/ping",
-                params={"email": email},
-                timeout=10,
+                f"{self.BASE_URL}/api/desktop/link/status",
+                params={"token": token}, timeout=10,
             )
             data = resp.json()
-            if resp.status_code == 200:
-                db.set_setting("account_email", email)
-                db.set_setting("account_name", data.get("name", email.split("@")[0]))
+            if data.get("linked"):
+                db.set_setting("account_name", data.get("name", "Account"))
                 db.set_setting("account_tier", data.get("tier", "free"))
                 return json.dumps({"signed_in": True, **data})
-            return json.dumps({"error": data.get("error", "not_found")})
+        except Exception:
+            pass
+        # Network hiccup or unlinked server-side: fall back to cached values.
+        if db.get_setting("account_name", ""):
+            return json.dumps({
+                "signed_in": True,
+                "name": db.get_setting("account_name", "Account"),
+                "tier": db.get_setting("account_tier", "free"),
+            })
+        return json.dumps({"signed_in": False})
+
+    def start_link(self) -> str:
+        """Begin pairing: returns a code to type at guardurai.com/link."""
+        import requests as _req
+        try:
+            resp = _req.post(f"{self.BASE_URL}/api/desktop/link/start", timeout=10)
+            if resp.status_code != 200:
+                return json.dumps({"error": "unavailable"})
+            data = resp.json()
+            # Stash the token; it's only persisted as the account once linked.
+            db.set_setting("pending_token", data["token"])
+            return json.dumps({"code": data["code"], "token": data["token"]})
         except Exception as e:
             return json.dumps({"error": str(e)})
 
+    def poll_link(self, token: str) -> str:
+        """Poll pairing status. On success, persist the token as the account."""
+        import requests as _req
+        try:
+            resp = _req.get(
+                f"{self.BASE_URL}/api/desktop/link/status",
+                params={"token": token}, timeout=10,
+            )
+            data = resp.json()
+            if data.get("linked"):
+                db.set_setting("account_token", token)
+                db.set_setting("account_name", data.get("name", "Account"))
+                db.set_setting("account_tier", data.get("tier", "free"))
+                db.set_setting("pending_token", "")
+                return json.dumps({"signed_in": True, **data})
+            return json.dumps({"signed_in": False})
+        except Exception:
+            return json.dumps({"signed_in": False})
+
     def unlink_account(self) -> str:
-        for key in ("account_email", "account_name", "account_tier"):
+        for key in ("account_token", "account_name", "account_tier", "pending_token"):
             db.set_setting(key, "")
         return json.dumps({"ok": True})
 

@@ -18,6 +18,23 @@ export async function getUserId(): Promise<string | null> {
   return userId ?? null;
 }
 
+/**
+ * Like getUserId, but also recognises the Guardurai desktop app, which can't
+ * carry a Clerk cookie. The app sends its paired device token as the
+ * `x-guardurai-device` header; we resolve that to the linked Clerk user so
+ * checks run at the user's paid tier. Falls back to the normal cookie session.
+ */
+export async function getUserIdFromRequest(request: Request): Promise<string | null> {
+  const token = request.headers.get("x-guardurai-device");
+  if (token) {
+    // Lazy import avoids pulling Supabase into the anonymous/cookie path.
+    const { resolveDeviceToken } = await import("@/app/lib/desktopLink");
+    const userId = await resolveDeviceToken(token);
+    if (userId) return userId;
+  }
+  return getUserId();
+}
+
 /** First IP from x-forwarded-for, falling back to x-real-ip. */
 export function getClientIp(request: Request): string {
   const xff = request.headers.get("x-forwarded-for");

@@ -7,7 +7,7 @@ import {
   type Tier,
   type Verdict,
 } from "@/app/lib/scamAnalysis";
-import { getUserId, getClientIp } from "@/app/lib/auth";
+import { getUserIdFromRequest, getClientIp } from "@/app/lib/auth";
 import { checkRateLimit, recordCheck } from "@/app/lib/rateLimit";
 import { getTierForUser } from "@/app/lib/subscription";
 import { checkUrlsInText, describeChecks } from "@/app/lib/urlReputation";
@@ -80,8 +80,9 @@ export async function POST(request: Request) {
   }
 
   try {
-    // Identify the caller: signed-in users by Clerk ID, everyone else by IP.
-    const userId = await getUserId();
+    // Identify the caller: signed-in users by Clerk ID (cookie or paired
+    // desktop token), everyone else by IP.
+    const userId = await getUserIdFromRequest(request);
     const ip = getClientIp(request);
     const identifier = userId ? `user:${userId}` : `ip:${ip}`;
     const identifierType: "ip" | "user" = userId ? "user" : "ip";
