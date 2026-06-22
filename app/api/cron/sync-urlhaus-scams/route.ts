@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { submitCommunityReport } from "@/app/lib/communityReports";
-import { upsertEntityPageFromFeed, domainToSlug } from "@/app/lib/entityPages";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -80,25 +79,21 @@ export async function GET(request: Request) {
 
   let created = 0;
   for (const domain of domains) {
-    const [entityId] = await Promise.all([
-      upsertEntityPageFromFeed("domain", domainToSlug(domain), domain, "likely_scam", {
-        source: "urlhaus",
-        sourceLabel: "URLhaus (abuse.ch)",
-        summary: `Listed on URLhaus (abuse.ch) as an active malware or phishing host.`,
-        redFlags: ["Flagged by the URLhaus threat database as actively malicious"],
-      }),
-      submitCommunityReport(
-        [{ inputType: "domain", inputValue: domain }],
-        "urlhaus",
-        "URLhaus (abuse.ch)",
-      ),
-    ]);
-    if (entityId) created++;
+    // Feed the extension's protection database only — NOT public entity pages.
+    // (Bulk auto-pages for obscure malware domains are a scaled-content/spam
+    // risk and have ~no search demand. Public pages are created on-demand from
+    // real user searches instead.)
+    await submitCommunityReport(
+      [{ inputType: "domain", inputValue: domain }],
+      "urlhaus",
+      "URLhaus (abuse.ch)",
+    );
+    created++;
   }
 
   return NextResponse.json({
     ok: true,
     domainsScanned: seen.size,
-    pagesUpserted: created,
+    reportsUpserted: created,
   });
 }
