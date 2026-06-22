@@ -85,6 +85,36 @@ export function inviteUrl(inviteCode: string): string {
   return `${SITE_URL}/family/join?code=${encodeURIComponent(inviteCode)}`;
 }
 
+// ── Extension activity (real-time protection heartbeat) ─────────────────────
+
+/** Records that a signed-in user's extension is active. Call fire-and-forget. */
+export async function recordExtensionActivity(userId: string): Promise<void> {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return;
+  await supabase
+    .from("extension_activity")
+    .upsert({ user_id: userId, last_seen: new Date().toISOString() });
+}
+
+/** Map of user_id → last_seen ISO string for the given users. */
+export async function getExtensionLastSeen(
+  userIds: string[],
+): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  const supabase = getSupabaseAdmin();
+  if (!supabase || userIds.length === 0) return map;
+
+  const { data } = await supabase
+    .from("extension_activity")
+    .select("user_id, last_seen")
+    .in("user_id", userIds);
+
+  for (const row of data ?? []) {
+    map.set(row.user_id as string, row.last_seen as string);
+  }
+  return map;
+}
+
 /** Recent scam alerts raised for this guardian's protected members (activity feed). */
 export async function getGuardianAlerts(
   guardianUserId: string,

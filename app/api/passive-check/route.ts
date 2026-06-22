@@ -2,7 +2,7 @@ import { NextResponse, after } from "next/server";
 import { checkUrlsInText } from "@/app/lib/urlReputation";
 import { lookupCommunityReports } from "@/app/lib/communityReports";
 import { getUserId } from "@/app/lib/auth";
-import { notifyGuardianOfScam } from "@/app/lib/family";
+import { notifyGuardianOfScam, recordExtensionActivity } from "@/app/lib/family";
 
 export const runtime = "nodejs";
 export const maxDuration = 10;
@@ -23,6 +23,11 @@ export async function POST(request: Request) {
   // Real-time protection is free for everyone — it's cheap to run (DB lookup +
   // Safe Browsing, no Claude/RDAP) and keeping people safe drives trust + growth.
   // The paid line is the deep AI analysis in /api/analyze, not this passive check.
+
+  // A signed-in user calling this = their extension is active. Record a
+  // heartbeat (non-blocking) so the Family dashboard can show protection status.
+  const userId = await getUserId();
+  if (userId) after(() => void recordExtensionActivity(userId));
 
   // Hard-signal checks only — no Claude, no RDAP. Target latency < 600ms.
   const [urlChecks, communityMatches] = await Promise.all([
@@ -63,7 +68,6 @@ export async function POST(request: Request) {
   // guardian. Only runs on the rare likely_scam case, so it adds no latency to
   // normal browsing; the email send is deduped (per member/domain/day).
   if (riskLevel === "likely_scam") {
-    const userId = await getUserId();
     if (userId) {
       let host = url;
       try {

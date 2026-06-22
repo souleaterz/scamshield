@@ -11,6 +11,7 @@ interface Member {
   status: "pending" | "active" | "revoked";
   created_at: string;
   accepted_at: string | null;
+  extensionActive: boolean;
 }
 
 interface Alert {
@@ -81,6 +82,21 @@ export default function FamilyDashboard({
   const [addMsg, setAddMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
+  const [remind, setRemind] = useState<Record<string, string>>({});
+
+  async function sendReminder(id: string) {
+    setRemind((r) => ({ ...r, [id]: "sending" }));
+    const res = await fetch("/api/family/remind", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ memberId: id }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setRemind((r) => ({
+      ...r,
+      [id]: res.ok ? "sent" : data?.error ?? "Couldn't send",
+    }));
+  }
 
   const protectedCount = members.filter((m) => m.status === "active").length;
   const pendingCount = members.filter((m) => m.status === "pending").length;
@@ -224,6 +240,38 @@ export default function FamilyDashboard({
                       ? `Joined ${timeAgo(m.accepted_at)} · Pro access included`
                       : "Hasn't accepted yet"}
                   </p>
+
+                  {/* Real-time protection status (active members only) */}
+                  {m.status === "active" &&
+                    (m.extensionActive ? (
+                      <p className="mt-1 text-xs font-medium text-emerald-600">
+                        🛡️ Real-time protection on
+                      </p>
+                    ) : (
+                      <div className="mt-1">
+                        <p className="text-xs font-medium text-amber-600">
+                          ⚠️ Extension not detected — not fully protected
+                        </p>
+                        {remind[m.id] === "sent" ? (
+                          <span className="text-xs text-emerald-600">
+                            ✓ Reminder sent
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => sendReminder(m.id)}
+                            disabled={remind[m.id] === "sending"}
+                            className="text-xs font-medium text-blue-600 hover:text-blue-700 disabled:opacity-60"
+                          >
+                            {remind[m.id] === "sending"
+                              ? "Sending…"
+                              : remind[m.id]
+                                ? remind[m.id]
+                                : "Send a reminder to install →"}
+                          </button>
+                        )}
+                      </div>
+                    ))}
+
                   {m.status === "pending" && (
                     <button
                       onClick={() => copyLink(m.invite_url, m.id)}

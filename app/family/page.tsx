@@ -6,6 +6,7 @@ import {
   listMembers,
   getAlertEmail,
   getGuardianAlerts,
+  getExtensionLastSeen,
   inviteUrl,
   MAX_MEMBERS,
 } from "@/app/lib/family";
@@ -50,10 +51,21 @@ export default async function FamilyPage() {
     getAlertEmail(userId),
     getGuardianAlerts(userId),
   ]);
-  const initialMembers = members.map((m) => ({
-    ...m,
-    invite_url: inviteUrl(m.invite_code),
-  }));
+
+  const memberUserIds = members
+    .map((m) => m.member_user_id)
+    .filter((id): id is string => Boolean(id));
+  const lastSeen = await getExtensionLastSeen(memberUserIds);
+  const WEEK = 7 * 24 * 60 * 60 * 1000;
+
+  const initialMembers = members.map((m) => {
+    const seen = m.member_user_id ? lastSeen.get(m.member_user_id) : undefined;
+    return {
+      ...m,
+      invite_url: inviteUrl(m.invite_code),
+      extensionActive: seen ? Date.now() - new Date(seen).getTime() < WEEK : false,
+    };
+  });
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-12">
