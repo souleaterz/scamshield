@@ -77,23 +77,36 @@ export async function GET(request: Request) {
     if (domains.length >= limit) break;
   }
 
-  let created = 0;
-  for (const domain of domains) {
-    // Feed the extension's protection database only — NOT public entity pages.
-    // (Bulk auto-pages for obscure malware domains are a scaled-content/spam
-    // risk and have ~no search demand. Public pages are created on-demand from
-    // real user searches instead.)
-    await submitCommunityReport(
-      [{ inputType: "domain", inputValue: domain }],
-      "urlhaus",
-      "URLhaus (abuse.ch)",
+  // Feed the extension's protection database only — NOT public entity pages.
+  // (Bulk auto-pages for obscure malware domains are a scaled-content/spam
+  // risk and have ~no search demand. Public pages are created on-demand from
+  // real user searches instead.)
+  //
+  // Upsert in bounded-concurrency batches rather than one sequential await per
+  // domain — 150 serial round-trips can blow the 60s function budget, which is
+  // exactly how this job silently stops landing data.
+  const BATCH = 20;
+  let upserted = 0;
+  let failed = 0;
+  for (let i = 0; i < domains.length; i += BATCH) {
+    const slice = domains.slice(i, i + BATCH);
+    const results = await Promise.allSettled(
+      slice.map((domain) =>
+        submitCommunityReport(
+          [{ inputType: "domain", inputValue: domain }],
+          "urlhaus",
+          "URLhaus (abuse.ch)",
+        ),
+      ),
     );
-    created++;
+    for (const r of results) r.status === "fulfilled" ? upserted++ : failed++;
   }
 
   return NextResponse.json({
-    ok: true,
+    ok: failed === 0,
     domainsScanned: seen.size,
-    reportsUpserted: created,
+    domainsSelected: domains.length,
+    reportsUpserted: upserted,
+    reportsFailed: failed,
   });
 }

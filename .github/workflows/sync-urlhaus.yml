@@ -1,0 +1,47 @@
+name: Sync URLhaus scam feed
+
+# Reliable external trigger for the daily threat-feed sync. Vercel Hobby crons
+# are best-effort and silently stop; this fires on a fixed schedule and gives a
+# visible green/red run history in the Actions tab so a failure is noticed.
+
+on:
+  schedule:
+    - cron: "0 7 * * *" # 07:00 UTC daily
+  workflow_dispatch: # manual "Run workflow" button in the Actions tab
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger URLhaus sync endpoint
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::CRON_SECRET repo secret is not set"
+            exit 1
+          fi
+
+          echo "Calling sync endpoint…"
+          response=$(curl -sS --max-time 120 \
+            -w "\n%{http_code}" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "https://guardurai.com/api/cron/sync-urlhaus-scams?limit=300")
+
+          body=$(echo "$response" | sed '$d')
+          status=$(echo "$response" | tail -n1)
+
+          echo "HTTP $status"
+          echo "Response: $body"
+
+          # Fail the run on any non-2xx, or when the job reports ok:false.
+          if [ "$status" -lt 200 ] || [ "$status" -ge 300 ]; then
+            echo "::error::Sync endpoint returned HTTP $status"
+            exit 1
+          fi
+          if echo "$body" | grep -q '"ok":false'; then
+            echo "::error::Sync reported ok:false (some upserts failed)"
+            exit 1
+          fi
+
+          echo "Sync completed successfully."
