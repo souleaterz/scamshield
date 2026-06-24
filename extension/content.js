@@ -96,9 +96,6 @@
     const bg = isScam ? "#dc2626" : "#d97706";
     const border = isScam ? "#991b1b" : "#92400e";
     const icon = isScam ? "🚨" : "⚠️";
-    const title = isScam
-      ? "Guardurai: This site has been flagged as a scam"
-      : "Guardurai: This site shows suspicious signs";
 
     const topFlag = result.flags?.[0] ?? "";
 
@@ -114,62 +111,97 @@
     const host = document.createElement("div");
     host.id = "ss-passive-host";
 
-    // Force positioning with !important so the page can't override it.
-    const P = { position: "fixed", top: "0", left: "0", right: "0", "z-index": "2147483647" };
+    // Full-screen host with !important so the page can't override or hide it.
+    const P = { position: "fixed", inset: "0", "z-index": "2147483647" };
     for (const [k, v] of Object.entries(P)) host.style.setProperty(k, v, "important");
 
     const shadow = host.attachShadow({ mode: "closed" });
 
+    const headline = isScam
+      ? "Warning: this site has been flagged as a scam"
+      : "Caution: this site shows suspicious signs";
+
     shadow.innerHTML = `
       <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        #banner {
-          display: flex; align-items: center; gap: 10px;
-          background: ${bg}; color: #fff;
-          border-bottom: 2px solid ${border};
-          padding: 10px 16px;
-          font: 600 13px/1.4 system-ui, -apple-system, sans-serif;
-          position: fixed; top: 0; left: 0; right: 0;
-          z-index: 2147483647;
-          box-shadow: 0 2px 12px rgba(0,0,0,0.35);
+        * { box-sizing: border-box; margin: 0; padding: 0;
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+        #backdrop {
+          position: fixed; inset: 0; z-index: 2147483647;
+          background: rgba(15, 23, 42, .72);
+          display: flex; align-items: center; justify-content: center;
+          padding: 20px;
+          animation: fade .18s ease;
         }
-        #icon { font-size: 18px; flex-shrink: 0; line-height: 1; }
-        #msg  { flex: 1; min-width: 0; }
-        #sub  { font-weight: 400; opacity: .88; font-size: 12px; margin-top: 2px;
-                white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        #upsell { display: inline-block; margin-top: 5px; color: #fff; font-weight: 600;
-                  font-size: 12px; text-decoration: underline; text-underline-offset: 2px;
-                  cursor: pointer; }
-        #upsell:hover { opacity: .85; }
-        #btns { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+        @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes pop { from { transform: scale(.94); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        #card {
+          position: relative;
+          width: min(560px, 94vw); min-height: 50vh;
+          display: flex; flex-direction: column; align-items: center; justify-content: center;
+          text-align: center;
+          background: #fff; border-radius: 20px;
+          border-top: 8px solid ${bg};
+          box-shadow: 0 24px 60px rgba(0,0,0,.45);
+          padding: 40px 36px;
+          animation: pop .22s ease;
+        }
+        #close {
+          position: absolute; top: 14px; right: 16px;
+          width: 34px; height: 34px; border-radius: 50%;
+          border: none; background: #f1f5f9; color: #475569;
+          font-size: 22px; line-height: 1; cursor: pointer;
+        }
+        #close:hover { background: #e2e8f0; color: #0f172a; }
+        #icon { font-size: 64px; line-height: 1; }
+        #title { margin-top: 16px; font-size: 24px; font-weight: 800;
+                 color: ${border}; line-height: 1.25; }
+        #sub { margin-top: 12px; font-size: 15px; color: #334155; line-height: 1.5;
+               max-width: 42ch; }
+        #upsell { display: inline-block; margin-top: 18px; padding: 12px 16px;
+                  background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px;
+                  color: #1d4ed8; font-weight: 600; font-size: 14px;
+                  text-decoration: none; line-height: 1.4; max-width: 44ch; }
+        #upsell:hover { background: #dbeafe; }
+        #actions { margin-top: 24px; display: flex; flex-direction: column; gap: 10px;
+                   width: 100%; max-width: 320px; }
         #ai {
-          background: #fff; color: ${bg}; border: none; cursor: pointer;
-          border-radius: 6px; padding: 5px 12px; font: 700 12px system-ui, sans-serif;
-          text-decoration: none; display: inline-block; white-space: nowrap;
+          display: block; background: ${bg}; color: #fff; border: none; cursor: pointer;
+          border-radius: 12px; padding: 13px 18px; font-size: 15px; font-weight: 700;
+          text-decoration: none;
         }
-        #dismiss {
-          background: transparent; border: 1.5px solid rgba(255,255,255,.7);
-          color: #fff; cursor: pointer; border-radius: 6px;
-          padding: 5px 10px; font: 600 12px system-ui, sans-serif;
+        #ai:hover { filter: brightness(.94); }
+        #ignore {
+          background: none; border: none; cursor: pointer;
+          color: #64748b; font-size: 13px; font-weight: 600; text-decoration: underline;
+          padding: 6px;
         }
-        #dismiss:hover { background: rgba(255,255,255,.15); }
+        #ignore:hover { color: #0f172a; }
+        #brand { margin-top: 20px; font-size: 12px; color: #94a3b8; }
       </style>
-      <div id="banner">
-        <span id="icon">${icon}</span>
-        <div id="msg">
-          <div>${title}</div>
-          ${topFlag ? `<div id="sub">${topFlag}</div>` : ""}
+      <div id="backdrop">
+        <div id="card" role="alertdialog" aria-modal="true">
+          <button id="close" aria-label="Close and continue anyway">×</button>
+          <div id="icon">${icon}</div>
+          <div id="title">${headline}</div>
+          ${topFlag ? `<div id="sub">${topFlag}</div>` : `<div id="sub">Guardurai detected signs of a scam on this page.</div>`}
           ${upsell}
-        </div>
-        <div id="btns">
-          <a id="ai" href="https://guardurai.com/?url=${encodeURIComponent(location.href)}" target="_blank" rel="noopener noreferrer">Check with AI</a>
-          <button id="dismiss">Dismiss</button>
+          <div id="actions">
+            <a id="ai" href="https://guardurai.com/?url=${encodeURIComponent(location.href)}" target="_blank" rel="noopener noreferrer">Check with AI for details</a>
+            <button id="ignore">I understand the risk — continue anyway</button>
+          </div>
+          <div id="brand">🛡️ Protected by Guardurai</div>
         </div>
       </div>`;
 
-    shadow.getElementById("dismiss").addEventListener("click", () => host.remove());
+    const close = () => host.remove();
+    shadow.getElementById("close").addEventListener("click", close);
+    shadow.getElementById("ignore").addEventListener("click", close);
+    // Clicking the dimmed backdrop (outside the card) also dismisses.
+    shadow.getElementById("backdrop").addEventListener("click", (e) => {
+      if (e.target && e.target.id === "backdrop") close();
+    });
 
-    document.documentElement.insertBefore(host, document.documentElement.firstChild);
+    document.documentElement.appendChild(host);
   }
   } // end doPassiveCheck
 })();

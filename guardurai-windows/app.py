@@ -90,6 +90,16 @@ class GuarduraiApp:
         if self._window:
             payload = json.dumps({"text": text, "result": result})
             self._window.evaluate_js(f"window.__onProtectionResult({payload})")
+            # On a real scam, surface the window so the big warning is actually
+            # seen even if the app was minimised or in the background.
+            if risk == "likely_scam":
+                try:
+                    self._window.restore()
+                    self._window.show()
+                    self._window.on_top = True
+                    self._window.on_top = False
+                except Exception:
+                    pass
 
         # Windows toast notification for threats only
         if risk in ("likely_scam", "suspicious"):

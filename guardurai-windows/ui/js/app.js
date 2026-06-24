@@ -280,14 +280,44 @@ async function unlinkAccount() {
 }
 
 // ── Real-time protection callback (called by app.py via evaluate_js) ──────────
-window.__onProtectionResult = function({ result }) {
+let _lastAlert = null;
+
+window.__onProtectionResult = function(payload) {
+  const result = (payload && payload.result) || payload || {};
+  const text = (payload && payload.text) || '';
   refreshStats();
   const risk = result.risk_level;
-  if (risk === 'likely_scam' || risk === 'suspicious') {
-    const dot = document.querySelector('#sidebar-badge .badge-dot');
-    if (dot) { dot.style.background = 'var(--danger)'; setTimeout(() => { dot.style.background = ''; }, 3000); }
-  }
+  if (risk !== 'likely_scam' && risk !== 'suspicious') return;
+
+  const dot = document.querySelector('#sidebar-badge .badge-dot');
+  if (dot) { dot.style.background = 'var(--danger)'; setTimeout(() => { dot.style.background = ''; }, 3000); }
+
+  showScamAlert(text, result);
 };
+
+function showScamAlert(text, result) {
+  _lastAlert = { input_text: text, result_json: result, risk_level: result.risk_level };
+  const scam = result.risk_level === 'likely_scam';
+  document.querySelector('#scam-alert .scam-card').classList.toggle('suspicious', !scam);
+  setText('scam-icon', scam ? '🚨' : '⚠️');
+  setText('scam-title', scam ? 'Warning: scam detected' : 'Caution: suspicious content');
+  setText('scam-sub', result.summary || (scam
+    ? 'Guardurai detected signs of a scam on something you just opened.'
+    : 'Guardurai detected suspicious signs on something you just opened.'));
+  const flags = (result.red_flags || []).slice(0, 4);
+  document.getElementById('scam-flags').innerHTML = flags.map(f => `<li>${escHtml(f)}</li>`).join('');
+  document.getElementById('scam-alert').classList.remove('hidden');
+}
+
+function dismissScamAlert() {
+  document.getElementById('scam-alert').classList.add('hidden');
+}
+
+function scamAlertDetails() {
+  dismissScamAlert();
+  if (_lastAlert) showDetail(JSON.stringify(_lastAlert));
+  else navigate('history');
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function activityItemHtml(item) {
