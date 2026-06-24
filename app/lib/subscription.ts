@@ -1,6 +1,7 @@
 import type Stripe from "stripe";
 import { getSupabaseAdmin } from "@/app/lib/supabase";
 import { tierForPriceId } from "@/app/lib/stripe";
+import { getActiveGrantTier } from "@/app/lib/redemption";
 import type { Tier } from "@/app/lib/scamAnalysis";
 
 const VALID_TIERS: Tier[] = ["free", "pro", "family"];
@@ -87,7 +88,14 @@ export async function getTierForUser(userId: string | null): Promise<Tier> {
 
   const ownTier =
     data && VALID_TIERS.includes(data.tier as Tier) ? (data.tier as Tier) : "free";
-  if (ownTier !== "free") return ownTier;
+
+  // A redeemed gift code grants Pro/Family for a fixed window with no Stripe
+  // subscription. Take whichever is higher — the paid sub or the active grant.
+  const rank: Record<Tier, number> = { free: 0, pro: 1, family: 2 };
+  let best: Tier = ownTier;
+  const giftTier = await getActiveGrantTier(supabase, userId);
+  if (giftTier && rank[giftTier] > rank[best]) best = giftTier;
+  if (best !== "free") return best;
 
   // Not a paying subscriber — but protected members of an active Family plan
   // get Pro-level access (unlimited checks, photo/company checks, no ads).
