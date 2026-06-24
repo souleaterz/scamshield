@@ -1,0 +1,45 @@
+name: Redemption expiry reminders
+
+# Emails gift-month redeemers whose access ends within ~3 days, nudging them to
+# subscribe. Same reliable-trigger pattern as the threat-feed syncs.
+
+on:
+  schedule:
+    - cron: "0 9 * * *" # 09:00 UTC daily
+  workflow_dispatch: # manual "Run workflow" button
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger reminder endpoint
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::CRON_SECRET repo secret is not set"
+            exit 1
+          fi
+
+          echo "Calling redemption-reminders endpoint…"
+          response=$(curl -sS --max-time 120 \
+            -w "\n%{http_code}" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "https://guardurai.com/api/cron/redemption-reminders")
+
+          body=$(echo "$response" | sed '$d')
+          status=$(echo "$response" | tail -n1)
+
+          echo "HTTP $status"
+          echo "Response: $body"
+
+          if [ "$status" -lt 200 ] || [ "$status" -ge 300 ]; then
+            echo "::error::Reminder endpoint returned HTTP $status"
+            exit 1
+          fi
+          if echo "$body" | grep -q '"ok":false'; then
+            echo "::error::Reminder run reported ok:false (some sends failed)"
+            exit 1
+          fi
+
+          echo "Reminder run completed."
