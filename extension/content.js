@@ -21,6 +21,15 @@
     }
   })();
 
+  // Tally pages monitored, so the popup can show the value Guardurai delivers.
+  try {
+    chrome.storage.local.get({ statProtected: 0 }, (s) => {
+      chrome.storage.local.set({ statProtected: (s.statProtected || 0) + 1 });
+    });
+  } catch (e) {
+    /* ignore */
+  }
+
   // Major brands that are extremely unlikely to be scam pages.
   // Keeps unnecessary API calls to zero for normal everyday browsing.
   const SAFE = new Set([
@@ -73,6 +82,15 @@
 
   function showBanner(result) {
     if (document.getElementById("ss-passive-host")) return;
+
+    // Count threats caught (suspicious or scam) for the popup's value stat.
+    try {
+      chrome.storage.local.get({ statBlocked: 0 }, (s) => {
+        chrome.storage.local.set({ statBlocked: (s.statBlocked || 0) + 1 });
+      });
+    } catch (e) {
+      /* ignore */
+    }
 
     const isScam = result.riskLevel === "likely_scam";
     const bg = isScam ? "#dc2626" : "#d97706";

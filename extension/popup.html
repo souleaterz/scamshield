@@ -25,6 +25,21 @@
       .header-brand { font-size: 16px; font-weight: 700; letter-spacing: -.3px; }
       .header-tag   { font-size: 11px; opacity: .75; margin-top: 1px; }
 
+      /* ── Stats strip ── */
+      .stats {
+        display: flex; gap: 10px;
+        margin: 10px 10px 0;
+      }
+      .stat {
+        flex: 1; background: #fff; border-radius: 12px;
+        padding: 12px 10px; text-align: center;
+        box-shadow: 0 1px 3px rgba(0,0,0,.07);
+      }
+      .stat-num { font-size: 22px; font-weight: 800; letter-spacing: -.5px; color: #0f172a; }
+      .stat-num.danger { color: #dc2626; }
+      .stat-lbl { font-size: 10px; font-weight: 600; color: #64748b; margin-top: 2px;
+                  text-transform: uppercase; letter-spacing: .04em; }
+
       /* ── Cards ── */
       .card {
         background: #fff;
@@ -118,6 +133,18 @@
       <div>
         <div class="header-brand">Guardurai</div>
         <div class="header-tag">Real-time scam protection</div>
+      </div>
+    </div>
+
+    <!-- Protection stats -->
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-num" id="stat-protected">0</div>
+        <div class="stat-lbl">Pages protected</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num danger" id="stat-blocked">0</div>
+        <div class="stat-lbl">Threats blocked</div>
       </div>
     </div>
 

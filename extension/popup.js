@@ -16,6 +16,15 @@ function esc(s) {
   );
 }
 
+// ── Protection stats ──────────────────────────────────────────────────────────
+
+chrome.storage.local.get({ statProtected: 0, statBlocked: 0 }, (s) => {
+  const p = document.getElementById("stat-protected");
+  const b = document.getElementById("stat-blocked");
+  if (p) p.textContent = (s.statProtected || 0).toLocaleString();
+  if (b) b.textContent = (s.statBlocked || 0).toLocaleString();
+});
+
 // ── Passive protection toggle ─────────────────────────────────────────────────
 
 chrome.storage.local.get({ passiveEnabled: true }, ({ passiveEnabled }) => {
