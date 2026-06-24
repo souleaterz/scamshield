@@ -171,37 +171,123 @@
         }
         #ai:hover { filter: brightness(.94); }
         #ignore {
-          background: none; border: none; cursor: pointer;
-          color: #64748b; font-size: 13px; font-weight: 600; text-decoration: underline;
-          padding: 6px;
+          background: none; border: 1px solid #cbd5e1; cursor: pointer;
+          color: #64748b; font-size: 14px; font-weight: 600; border-radius: 12px;
+          padding: 11px 18px;
         }
-        #ignore:hover { color: #0f172a; }
-        #brand { margin-top: 20px; font-size: 12px; color: #94a3b8; }
+        #ignore:not(:disabled):hover { color: #0f172a; border-color: #94a3b8; }
+        #ignore:disabled { opacity: .4; cursor: not-allowed; }
+        #ack-row {
+          margin-top: 22px; display: flex; align-items: center; gap: 10px;
+          padding: 12px 16px; border-radius: 12px;
+          background: #f8fafc; border: 1.5px solid #e2e8f0; cursor: pointer;
+          max-width: 360px; width: 100%;
+        }
+        #ack-row.nudge { border-color: ${bg}; background: #fef2f2; animation: nudge .4s; }
+        @keyframes nudge {
+          0%,100% { transform: translateX(0); }
+          20%,60% { transform: translateX(-6px); }
+          40%,80% { transform: translateX(6px); }
+        }
+        #ack { width: 19px; height: 19px; flex-shrink: 0; cursor: pointer; accent-color: ${bg}; }
+        #ack-label { font-size: 14px; font-weight: 600; color: #0f172a; cursor: pointer; text-align: left; }
+        #brand { margin-top: 18px; font-size: 12px; color: #94a3b8; }
       </style>
       <div id="backdrop">
         <div id="card" role="alertdialog" aria-modal="true">
-          <button id="close" aria-label="Close and continue anyway">×</button>
+          <button id="close" aria-label="Close warning">×</button>
           <div id="icon">${icon}</div>
           <div id="title">${headline}</div>
           ${topFlag ? `<div id="sub">${topFlag}</div>` : `<div id="sub">Guardurai detected signs of a scam on this page.</div>`}
           ${upsell}
+          <label id="ack-row" for="ack">
+            <input type="checkbox" id="ack" />
+            <span id="ack-label">I understand the risks</span>
+          </label>
           <div id="actions">
             <a id="ai" href="https://guardurai.com/?url=${encodeURIComponent(location.href)}" target="_blank" rel="noopener noreferrer">Check with AI for details</a>
-            <button id="ignore">I understand the risk — continue anyway</button>
+            <button id="ignore" disabled>Continue anyway</button>
           </div>
           <div id="brand">🛡️ Protected by Guardurai</div>
         </div>
       </div>`;
 
-    const close = () => host.remove();
-    shadow.getElementById("close").addEventListener("click", close);
-    shadow.getElementById("ignore").addEventListener("click", close);
-    // Clicking the dimmed backdrop (outside the card) also dismisses.
+    const ackBox = shadow.getElementById("ack");
+    const ackRow = shadow.getElementById("ack-row");
+    const ignoreBtn = shadow.getElementById("ignore");
+
+    ackBox.addEventListener("change", () => {
+      ignoreBtn.disabled = !ackBox.checked;
+    });
+
+    // Collapse the big modal into a small, persistent top banner so the page
+    // stays usable but the scam warning never fully disappears.
+    const collapse = () => {
+      host.remove();
+      showMiniBanner(result);
+    };
+
+    // The user must tick "I understand the risks" before any close path works.
+    const attemptClose = () => {
+      if (!ackBox.checked) {
+        ackRow.classList.remove("nudge");
+        void ackRow.offsetWidth; // reflow so the animation restarts each try
+        ackRow.classList.add("nudge");
+        return;
+      }
+      collapse();
+    };
+
+    shadow.getElementById("close").addEventListener("click", attemptClose);
+    ignoreBtn.addEventListener("click", attemptClose);
     shadow.getElementById("backdrop").addEventListener("click", (e) => {
-      if (e.target && e.target.id === "backdrop") close();
+      if (e.target && e.target.id === "backdrop") attemptClose();
     });
 
     document.documentElement.appendChild(host);
+  }
+
+  // Small persistent warning bar shown after the user acknowledges the big
+  // modal — keeps the scam warning visible without blocking the page.
+  function showMiniBanner(result) {
+    if (document.getElementById("ss-passive-mini")) return;
+    const isScam = result.riskLevel === "likely_scam";
+    const bg = isScam ? "#dc2626" : "#d97706";
+    const icon = isScam ? "🚨" : "⚠️";
+    const text = isScam
+      ? "Guardurai: this site has been flagged as a scam"
+      : "Guardurai: this site shows suspicious signs";
+
+    const host = document.createElement("div");
+    host.id = "ss-passive-mini";
+    const P = { position: "fixed", top: "0", left: "0", right: "0", "z-index": "2147483647" };
+    for (const [k, v] of Object.entries(P)) host.style.setProperty(k, v, "important");
+
+    const shadow = host.attachShadow({ mode: "closed" });
+    shadow.innerHTML = `
+      <style>
+        * { box-sizing: border-box; margin: 0; padding: 0;
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+        #bar { display: flex; align-items: center; gap: 10px;
+               background: ${bg}; color: #fff; padding: 9px 14px;
+               font: 600 13px/1.4 system-ui, sans-serif;
+               box-shadow: 0 2px 10px rgba(0,0,0,.3); }
+        #i { font-size: 16px; flex-shrink: 0; }
+        #t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        #d { color: #fff; font-size: 12px; white-space: nowrap; text-decoration: underline; text-underline-offset: 2px; }
+        #x { background: transparent; border: 1.5px solid rgba(255,255,255,.6); color: #fff;
+             cursor: pointer; border-radius: 6px; padding: 3px 10px; font: 600 12px system-ui; flex-shrink: 0; }
+        #x:hover { background: rgba(255,255,255,.15); }
+      </style>
+      <div id="bar">
+        <span id="i">${icon}</span>
+        <span id="t">${text}</span>
+        <a id="d" href="https://guardurai.com/?url=${encodeURIComponent(location.href)}" target="_blank" rel="noopener noreferrer">Details</a>
+        <button id="x" aria-label="Dismiss">Dismiss</button>
+      </div>`;
+
+    shadow.getElementById("x").addEventListener("click", () => host.remove());
+    document.documentElement.insertBefore(host, document.documentElement.firstChild);
   }
   } // end doPassiveCheck
 })();
