@@ -50,6 +50,7 @@ export async function getActiveGrantTier(
 export async function redeemCode(
   rawCode: string,
   userId: string,
+  email?: string | null,
 ): Promise<RedeemResult> {
   const supabase = getSupabaseAdmin();
   if (!supabase) return { ok: false, error: "unavailable" };
@@ -61,6 +62,8 @@ export async function redeemCode(
     .update({
       status: "redeemed",
       redeemed_by: userId,
+      // Captured from Clerk so the expiry-reminder job has somewhere to email.
+      redeemed_email: email ?? null,
       redeemed_at: new Date().toISOString(),
     })
     .eq("code", code)

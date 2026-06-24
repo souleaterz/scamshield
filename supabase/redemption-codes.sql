@@ -10,7 +10,9 @@ create table if not exists public.redemption_codes (
   batch         text,                 -- label for tracking, e.g. 'ebay-2026-06'
   status        text not null default 'unused' check (status in ('unused', 'redeemed')),
   redeemed_by   text,                 -- Clerk user id
+  redeemed_email text,                -- captured for Resend reminders
   redeemed_at   timestamptz,
+  reminded_at   timestamptz,          -- set when the expiry reminder was sent
   created_at    timestamptz not null default now()
 );
 
