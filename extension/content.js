@@ -14,7 +14,7 @@
     const h = location.hostname;
     if (h === "guardurai.com" || h.endsWith(".guardurai.com") || h === "localhost") {
       try {
-        document.documentElement.setAttribute("data-guardurai-extension", "1.6.1");
+        document.documentElement.setAttribute("data-guardurai-extension", "1.7.0");
       } catch (e) {
         /* ignore */
       }
@@ -84,6 +84,15 @@
 
     const topFlag = result.flags?.[0] ?? "";
 
+    // Moment-of-fear upsell: only free/anonymous users, only on real scams.
+    // The strongest pitch here is Family — "a loved one could land on this too,
+    // and you'd be alerted." Paying users never see it.
+    const isPaid = result.tier === "pro" || result.tier === "family";
+    const showUpsell = isScam && !isPaid;
+    const upsell = showUpsell
+      ? `<a id="upsell" href="https://guardurai.com/family?ref=ext-scam" target="_blank" rel="noopener noreferrer">🛡️ A family member could land on a site like this — get alerted the moment they do →</a>`
+      : "";
+
     const host = document.createElement("div");
     host.id = "ss-passive-host";
 
@@ -110,6 +119,10 @@
         #msg  { flex: 1; min-width: 0; }
         #sub  { font-weight: 400; opacity: .88; font-size: 12px; margin-top: 2px;
                 white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        #upsell { display: inline-block; margin-top: 5px; color: #fff; font-weight: 600;
+                  font-size: 12px; text-decoration: underline; text-underline-offset: 2px;
+                  cursor: pointer; }
+        #upsell:hover { opacity: .85; }
         #btns { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
         #ai {
           background: #fff; color: ${bg}; border: none; cursor: pointer;
@@ -128,6 +141,7 @@
         <div id="msg">
           <div>${title}</div>
           ${topFlag ? `<div id="sub">${topFlag}</div>` : ""}
+          ${upsell}
         </div>
         <div id="btns">
           <a id="ai" href="https://guardurai.com/?url=${encodeURIComponent(location.href)}" target="_blank" rel="noopener noreferrer">Check with AI</a>

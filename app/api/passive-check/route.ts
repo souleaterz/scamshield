@@ -2,6 +2,7 @@ import { NextResponse, after } from "next/server";
 import { checkUrlsInText } from "@/app/lib/urlReputation";
 import { lookupCommunityReports } from "@/app/lib/communityReports";
 import { getUserIdFromRequest } from "@/app/lib/auth";
+import { getTierForUser } from "@/app/lib/subscription";
 import { notifyGuardianOfScam, recordExtensionActivity } from "@/app/lib/family";
 
 export const runtime = "nodejs";
@@ -87,5 +88,12 @@ export async function POST(request: Request) {
   }
 
   const finalRisk: Risk = riskLevel;
-  return NextResponse.json({ riskLevel: finalRisk, flags, communityMatches });
+
+  // Tier lets the extension's scam banner upsell free users (and stay quiet for
+  // paying ones). Only look it up when a banner will actually show — keeps the
+  // common safe-page path free of an extra subscription lookup.
+  let tier: "free" | "pro" | "family" = "free";
+  if (finalRisk !== "safe" && userId) tier = await getTierForUser(userId);
+
+  return NextResponse.json({ riskLevel: finalRisk, flags, communityMatches, tier });
 }
