@@ -64,7 +64,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-guardurai-client": "extension" },
       credentials: "include",
-      body: JSON.stringify({ scamEmailContent: msg.scamEmailContent, country: msg.country }),
+      body: JSON.stringify({ scamEmailContent: msg.scamEmailContent, country: msg.country, scammerEmail: msg.scammerEmail }),
     })
       .then(async (res) => {
         const data = await res.json().catch(() => ({}));
@@ -77,6 +77,16 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         }
       })
       .catch((err) => sendResponse({ ok: false, error: err.message }));
+    return true;
+  }
+
+  if (msg.type === "decoyStatus") {
+    fetch(`${GUARDURAI_API}/api/decoy/status?sessionId=${encodeURIComponent(msg.sessionId)}`, {
+      headers: { "x-guardurai-client": "extension" },
+      credentials: "include",
+    })
+      .then(async (res) => sendResponse(res.ok ? await res.json() : null))
+      .catch(() => sendResponse(null));
     return true;
   }
 

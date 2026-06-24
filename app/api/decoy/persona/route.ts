@@ -3,8 +3,27 @@ import { getUserIdFromRequest, getClientIp } from "@/app/lib/auth";
 import { getTierForUser } from "@/app/lib/subscription";
 import { getSupabaseAdmin } from "@/app/lib/supabase";
 import { generatePersona, generateDecoyReply, type SupportedCountry, COUNTRY_LABELS } from "@/app/lib/decoyPersona";
+import {
+  isRelayConfigured,
+  makeRelayAddress,
+  relayFrom,
+  sendDecoyEmail,
+} from "@/app/lib/decoyRelay";
 
 export const runtime = "nodejs";
+
+/** Pull the subject from extracted email text ("Subject: ..." first line). */
+function replySubject(scamEmailContent: string | undefined): string {
+  const m = scamEmailContent?.match(/^Subject:\s*(.+)$/im);
+  const subj = m?.[1]?.trim();
+  if (!subj) return "Re: your message";
+  return /^re:/i.test(subj) ? subj : `Re: ${subj}`;
+}
+
+/** Basic shape check so we never try to send to garbage. */
+function isEmail(s: unknown): s is string {
+  return typeof s === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+}
 
 const DAILY_LIMITS = { free: 1, pro: 20, family: 20 } as const;
 
@@ -22,9 +41,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
   }
 
-  const { scamEmailContent, country: rawCountry } = (body ?? {}) as {
+  const { scamEmailContent, country: rawCountry, scammerEmail } = (body ?? {}) as {
     scamEmailContent?: string;
     country?: string;
+    scammerEmail?: string;
   };
 
   const VALID_COUNTRIES = Object.keys(COUNTRY_LABELS) as SupportedCountry[];
@@ -73,6 +93,11 @@ export async function POST(request: Request) {
     }
   }
 
+  // Decide whether this decoy runs through the relay (system sends + captures
+  // replies) or the legacy manual flow (user copies the reply themselves).
+  const useRelay = isRelayConfigured() && isEmail(scammerEmail) && Boolean(reply);
+  const relayAddress = useRelay ? makeRelayAddress(persona) : null;
+
   // Persist the session
   let sessionId: string | null = null;
   if (supabase) {
@@ -85,6 +110,8 @@ export async function POST(request: Request) {
         persona,
         initial_reply: reply,
         status: "active",
+        relay_address: relayAddress,
+        scammer_email: useRelay ? scammerEmail : null,
       })
       .select("id")
       .single();
@@ -96,5 +123,40 @@ export async function POST(request: Request) {
     }
   }
 
-  return NextResponse.json({ sessionId, persona, reply });
+  // Relay path: send the opening message from the decoy address and record it.
+  let relayActive = false;
+  if (useRelay && relayAddress && sessionId && supabase && reply) {
+    const subject = replySubject(scamEmailContent);
+    const sent = await sendDecoyEmail({
+      from: relayFrom(persona, relayAddress),
+      to: scammerEmail as string,
+      subject,
+      text: reply,
+    });
+    if (sent) {
+      relayActive = true;
+      const now = new Date().toISOString();
+      await supabase.from("decoy_messages").insert({
+        session_id: sessionId,
+        direction: "outbound",
+        from_addr: relayAddress,
+        to_addr: scammerEmail,
+        subject,
+        body: reply,
+      });
+      await supabase
+        .from("decoy_sessions")
+        .update({ last_message_at: now, message_count: 1 })
+        .eq("id", sessionId);
+    }
+  }
+
+  // When the relay sent the opener, the user doesn't need the reply text — the
+  // conversation is now handled server-side.
+  return NextResponse.json({
+    sessionId,
+    persona,
+    reply: relayActive ? null : reply,
+    relayActive,
+  });
 }

@@ -172,12 +172,18 @@
       .copy-btn:hover { background: #6d28d9; }
       .compose-btn { background: #f1f5f9; color: #334155; }
       .compose-btn:hover { background: #e2e8f0; }
+      .relay-note {
+        font-size: 12px; line-height: 1.5; color: #166534;
+        background: #f0fdf4; border: 1px solid #bbf7d0;
+        border-radius: 8px; padding: 8px 10px; margin-top: 4px;
+      }
       .timer {
         margin-top: 10px; padding: 8px; background: #faf5ff;
         border-radius: 8px; text-align: center;
         font-size: 11px; color: #7c3aed;
       }
       .timer-count { font-size: 18px; font-weight: 700; display: block; letter-spacing: .04em; font-variant-numeric: tabular-nums; }
+      .timer-sub { margin-top: 4px; font-size: 11px; color: #a78bda; }
       .end-decoy { margin-top: 10px; text-align: center; }
       .end-decoy button {
         background: none; border: none; color: #94a3b8; font-size: 11px;
@@ -342,7 +348,7 @@
       <p class="muted" style="margin-top:8px;font-size:12px;">Building your fake persona and crafting a reply…</p>`;
 
     chrome.runtime.sendMessage(
-      { type: "deployDecoy", scamEmailContent: emailText, country },
+      { type: "deployDecoy", scamEmailContent: emailText, country, scammerEmail: senderEmail },
       (resp) => {
         if (chrome.runtime.lastError || !resp) {
           panel.innerHTML = renderMsg("Couldn't reach Guardurai. Check your connection.");
@@ -380,6 +386,9 @@
           senderEmail,
           startTime: Date.now(),
           reported: 0,
+          relayActive: !!resp.data.relayActive,
+          serverSeconds: 0,
+          messageCount: 0,
         };
         persistActiveDecoy();
 
@@ -397,7 +406,7 @@
   // call any number of times — this is how the pill reopens the card.
   function renderDecoyCard(shadow, panel) {
     if (!activeDecoy) return;
-    const { persona, reply, senderEmail } = activeDecoy;
+    const { persona, reply, senderEmail, relayActive } = activeDecoy;
 
     const bankRows = Object.entries(persona.bankDetails ?? {})
       .map(([k, v]) => fieldRow(k, v))
@@ -406,6 +415,20 @@
     const composeUrl = senderEmail
       ? `https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(senderEmail)}&body=${encodeURIComponent(reply ?? "")}`
       : null;
+
+    // Relay mode: Guardurai sent the opener and handles the thread server-side,
+    // so there's nothing for the user to copy/send.
+    const replyBlock = relayActive
+      ? `<div class="section-h">Conversation</div>
+         <div class="relay-note">✅ Guardurai sent the first reply and is keeping the conversation going. The scammer is talking to your decoy — not you.</div>`
+      : reply
+        ? `<div class="section-h">Reply to send</div>
+           <textarea class="reply-box" id="decoy-reply">${esc(reply)}</textarea>
+           <div class="action-row">
+             <button class="action-btn copy-btn" id="copy-reply-btn">📋 Copy reply</button>
+             ${composeUrl ? `<button class="action-btn compose-btn" id="compose-btn">✉️ Open in Gmail</button>` : ""}
+           </div>`
+        : "";
 
     panel.innerHTML = `
       <div class="row">
@@ -417,8 +440,9 @@
       </p>
 
       <div class="timer">
-        Scammer time wasted
-        <span class="timer-count" id="decoy-timer">${fmt(elapsedSecs())}</span>
+        ${relayActive ? "Scammer time wasted (live)" : "Scammer time wasted"}
+        <span class="timer-count" id="decoy-timer">${fmt(relayActive ? (activeDecoy.serverSeconds || 0) : elapsedSecs())}</span>
+        ${relayActive ? `<div class="timer-sub" id="decoy-msgcount">${msgCountLabel(activeDecoy.messageCount || 0)}</div>` : ""}
       </div>
 
       <div class="section-h">Fake identity</div>
@@ -434,13 +458,7 @@
       ${fieldRow(persona.card.type + " Card", persona.card.number)}
       ${fieldRow("Expiry / CVV", `${persona.card.expiry} / ${persona.card.cvv}`)}
 
-      ${reply ? `
-        <div class="section-h">Reply to send</div>
-        <textarea class="reply-box" id="decoy-reply">${esc(reply)}</textarea>
-        <div class="action-row">
-          <button class="action-btn copy-btn" id="copy-reply-btn">📋 Copy reply</button>
-          ${composeUrl ? `<button class="action-btn compose-btn" id="compose-btn">✉️ Open in Gmail</button>` : ""}
-        </div>` : ""}
+      ${replyBlock}
 
       <div class="end-decoy"><button data-end>End decoy &amp; stop timer</button></div>`;
 
@@ -492,6 +510,23 @@
     else chrome.storage.local.remove("activeDecoy");
   }
 
+  function displaySecs() {
+    if (!activeDecoy) return 0;
+    return activeDecoy.relayActive ? (activeDecoy.serverSeconds || 0) : elapsedSecs();
+  }
+
+  function msgCountLabel(n) {
+    if (n <= 0) return "Waiting for them to reply…";
+    return `${n} message${n !== 1 ? "s" : ""} exchanged`;
+  }
+
+  function setTimers(shadow, secs) {
+    const t1 = shadow.getElementById("decoy-timer");
+    if (t1) t1.textContent = fmt(secs);
+    const t2 = shadow.getElementById("decoy-pill-time");
+    if (t2) t2.textContent = fmt(secs);
+  }
+
   // Shows/hides the pill based on whether a decoy is active and the card is open,
   // and keeps the ticker running while there's a decoy to track.
   function refreshDecoyUi(shadow) {
@@ -503,7 +538,7 @@
       const cardOpen = panel && panel.style.display === "block";
       pill.style.display = cardOpen ? "none" : "flex";
       const t = shadow.getElementById("decoy-pill-time");
-      if (t) t.textContent = fmt(elapsedSecs());
+      if (t) t.textContent = fmt(displaySecs());
       startTicker(shadow);
     } else {
       pill.style.display = "none";
@@ -514,8 +549,12 @@
   function startTicker(shadow) {
     if (decoyTicker || !activeDecoy) return;
     tick(shadow);
-    const secs = elapsedSecs();
-    if (secs > 0) report(secs); // catch up after a reopen/page reload
+    if (activeDecoy.relayActive) {
+      pollStatus(shadow); // immediate refresh of real server numbers
+    } else {
+      const secs = elapsedSecs();
+      if (secs > 0) report(secs); // catch up after a reopen/page reload
+    }
     decoyTicker = setInterval(() => tick(shadow), 1000);
   }
 
@@ -528,12 +567,34 @@
 
   function tick(shadow) {
     if (!activeDecoy) { stopTicker(); return; }
+
+    if (activeDecoy.relayActive) {
+      // Display is driven by the server's real engagement time; refresh it on a
+      // 15s poll rather than counting client wall-clock.
+      setTimers(shadow, activeDecoy.serverSeconds || 0);
+      const since = activeDecoy._lastPoll ? Date.now() - activeDecoy._lastPoll : Infinity;
+      if (since >= 15000) pollStatus(shadow);
+      return;
+    }
+
     const secs = elapsedSecs();
-    const cardTimer = shadow.getElementById("decoy-timer");
-    if (cardTimer) cardTimer.textContent = fmt(secs);
-    const pillTime = shadow.getElementById("decoy-pill-time");
-    if (pillTime) pillTime.textContent = fmt(secs);
+    setTimers(shadow, secs);
     if (secs > 0 && secs % 15 === 0) report(secs);
+  }
+
+  function pollStatus(shadow) {
+    if (!activeDecoy?.sessionId) return;
+    const sid = activeDecoy.sessionId;
+    activeDecoy._lastPoll = Date.now();
+    chrome.runtime.sendMessage({ type: "decoyStatus", sessionId: sid }, (st) => {
+      if (chrome.runtime.lastError || !st || !activeDecoy || activeDecoy.sessionId !== sid) return;
+      activeDecoy.serverSeconds = st.secondsWasted || 0;
+      activeDecoy.messageCount = st.messageCount || 0;
+      persistActiveDecoy();
+      setTimers(shadow, activeDecoy.serverSeconds);
+      const mc = shadow.getElementById("decoy-msgcount");
+      if (mc) mc.textContent = msgCountLabel(activeDecoy.messageCount);
+    });
   }
 
   // Reports elapsed time to the server (global counter) and to local storage
@@ -569,7 +630,9 @@
   }
 
   function endDecoy(shadow) {
-    if (activeDecoy) {
+    // Manual-mode decoys report their final client-tracked time; relay decoys
+    // are timed server-side from real messages, so nothing to flush.
+    if (activeDecoy && !activeDecoy.relayActive) {
       const secs = elapsedSecs();
       sendDecoyHeartbeat(secs);
       flushLocal(secs);
