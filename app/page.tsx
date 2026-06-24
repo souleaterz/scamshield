@@ -87,6 +87,10 @@ export default async function Home({
           <Link href="/terms" className="hover:text-slate-600">
             Terms
           </Link>
+          <span aria-hidden>·</span>
+          <Link href="/redeem" className="hover:text-slate-600">
+            Redeem a code
+          </Link>
         </p>
       </footer>
     </main>
