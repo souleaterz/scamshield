@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import GuarduraiMascot from "@/app/components/GuarduraiMascot";
-import { SITE_URL } from "@/app/lib/site";
-
-const EXTENSION_URL = "https://chromewebstore.google.com/detail/guardurai";
+import { SITE_URL, EXTENSION_URL } from "@/app/lib/site";
 
 export const metadata: Metadata = {
   title: "About Guardurai — AI scam protection for you and your family",

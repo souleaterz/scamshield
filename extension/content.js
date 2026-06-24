@@ -7,6 +7,20 @@
 (function () {
   if (!location.href.startsWith("http")) return;
 
+  // Let our own site detect that the extension is installed (so it can hide the
+  // "install the extension" CTA). Gated to first-party only — we don't expose
+  // the extension's presence to every site the user visits.
+  (function markFirstParty() {
+    const h = location.hostname;
+    if (h === "guardurai.com" || h.endsWith(".guardurai.com") || h === "localhost") {
+      try {
+        document.documentElement.setAttribute("data-guardurai-extension", "1.6.1");
+      } catch (e) {
+        /* ignore */
+      }
+    }
+  })();
+
   // Major brands that are extremely unlikely to be scam pages.
   // Keeps unnecessary API calls to zero for normal everyday browsing.
   const SAFE = new Set([

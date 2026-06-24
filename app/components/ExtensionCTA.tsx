@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { EXTENSION_URL } from "@/app/lib/site";
 
 const STORAGE_KEY = "gurai-ext-cta-dismissed";
 
@@ -12,7 +13,34 @@ export default function ExtensionCTA() {
     const isChrome = /Chrome\//.test(navigator.userAgent) && !/Mobile/.test(navigator.userAgent);
     if (!isChrome) return;
     if (localStorage.getItem(STORAGE_KEY)) return;
-    setVisible(true);
+
+    // Don't nag people who already have the extension. Its content script marks
+    // the page with data-guardurai-extension — but at document_idle, which can
+    // land after hydration, so we also watch for the marker arriving late.
+    const installed = () =>
+      document.documentElement.hasAttribute("data-guardurai-extension");
+    if (installed()) return;
+
+    const observer = new MutationObserver(() => {
+      if (installed()) {
+        setVisible(false);
+        observer.disconnect();
+      }
+    });
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-guardurai-extension"],
+    });
+
+    // Brief grace period so the banner doesn't flash before the marker appears.
+    const timer = setTimeout(() => {
+      if (!installed()) setVisible(true);
+    }, 800);
+
+    return () => {
+      clearTimeout(timer);
+      observer.disconnect();
+    };
   }, []);
 
   function dismiss() {
@@ -30,7 +58,7 @@ export default function ExtensionCTA() {
         The Guardurai extension warns you about scam pages before you click.
       </p>
       <a
-        href="https://chromewebstore.google.com/detail/guardurai"
+        href={EXTENSION_URL}
         target="_blank"
         rel="noopener noreferrer"
         className="shrink-0 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-blue-700"

@@ -4,11 +4,9 @@ import { getUserId, isClerkConfigured } from "@/app/lib/auth";
 import { getTierForUser } from "@/app/lib/subscription";
 import { getSupabaseAdmin } from "@/app/lib/supabase";
 import { sendEmail, isEmailConfigured } from "@/app/lib/email";
-import { SITE_URL } from "@/app/lib/site";
+import { SITE_URL, EXTENSION_URL } from "@/app/lib/site";
 
 export const runtime = "nodejs";
-
-const EXTENSION_URL = "https://chromewebstore.google.com/detail/guardurai";
 
 export async function POST(request: Request) {
   const guardianId = await getUserId();

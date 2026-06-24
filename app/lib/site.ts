@@ -4,3 +4,7 @@ export const SITE_URL = (
 ).replace(/\/$/, "");
 
 export const SITE_NAME = "Guardurai";
+
+/** Live Chrome Web Store listing for the Guardurai extension. */
+export const EXTENSION_URL =
+  "https://chromewebstore.google.com/detail/guardurai-%E2%80%94-scam-checker/mkcomopebcifhpogmiogdplcfnmiacdi";
