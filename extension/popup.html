@@ -119,6 +119,22 @@
       }
       .auth-btn:hover { text-decoration: underline; }
 
+      /* ── Decoy card ── */
+      .decoy-card {
+        background: #faf5ff; border: 1px solid #e9d5ff;
+        border-radius: 12px; margin: 10px 10px 0;
+        padding: 12px 14px;
+      }
+      .decoy-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+      .decoy-label { font-size: 12px; font-weight: 700; color: #7c3aed; }
+      .decoy-stat  { font-size: 11px; color: #7c3aed; margin-top: 2px; }
+      .decoy-link  {
+        font-size: 11px; font-weight: 600; color: #7c3aed;
+        background: none; border: none; cursor: pointer; padding: 0;
+        text-decoration: none; flex-shrink: 0;
+      }
+      .decoy-link:hover { text-decoration: underline; }
+
       /* ── Tip ── */
       .tip {
         font-size: 10px; color: #94a3b8; text-align: center;
@@ -169,6 +185,17 @@
 
     <!-- Scan result -->
     <div class="result" id="result"></div>
+
+    <!-- Decoy stats -->
+    <div class="decoy-card" id="decoy-card">
+      <div class="decoy-row">
+        <div>
+          <div class="decoy-label">🪤 Decoy mode</div>
+          <div class="decoy-stat" id="decoy-stat">Open Gmail to deploy your first decoy</div>
+        </div>
+        <button class="decoy-link" id="decoy-link">Learn more →</button>
+      </div>
+    </div>
 
     <!-- Auth status -->
     <div class="auth">

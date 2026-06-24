@@ -58,6 +58,41 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       .catch((err) => sendResponse({ ok: false, error: err.message }));
     return true;
   }
+
+  if (msg.type === "deployDecoy") {
+    fetch(`${GUARDURAI_API}/api/decoy/persona`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-guardurai-client": "extension" },
+      credentials: "include",
+      body: JSON.stringify({ scamEmailContent: msg.scamEmailContent, country: msg.country }),
+    })
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 429) {
+          sendResponse({ ok: false, limitReached: true, error: data?.error });
+        } else if (!res.ok) {
+          sendResponse({ ok: false, error: data?.error ?? "Request failed" });
+        } else {
+          sendResponse({ ok: true, data });
+        }
+      })
+      .catch((err) => sendResponse({ ok: false, error: err.message }));
+    return true;
+  }
+
+  if (msg.type === "decoyHeartbeat") {
+    // Report a decoy session's elapsed time so the global counter stays live.
+    // Fire-and-forget — a dropped heartbeat just means a slightly stale total.
+    fetch(`${GUARDURAI_API}/api/decoy/heartbeat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-guardurai-client": "extension" },
+      credentials: "include",
+      body: JSON.stringify({ sessionId: msg.sessionId, secondsWasted: msg.secondsWasted }),
+    })
+      .then(() => sendResponse({ ok: true }))
+      .catch(() => sendResponse({ ok: false }));
+    return true;
+  }
 });
 
 const MENU_ID = "guardurai-check";

@@ -3,6 +3,7 @@ import Link from "next/link";
 import ScamChecker from "@/app/components/ScamChecker";
 import GuarduraiMascot from "@/app/components/GuarduraiMascot";
 import LatestScams from "@/app/components/LatestScams";
+import DecoyCounter from "@/app/components/DecoyCounter";
 import { getUserId, isClerkConfigured } from "@/app/lib/auth";
 import { getTierForUser } from "@/app/lib/subscription";
 
@@ -39,6 +40,10 @@ export default async function Home({
         clerkEnabled={isClerkConfigured()}
         justUpgraded={justUpgraded}
       />
+
+      <Suspense fallback={null}>
+        <DecoyCounter />
+      </Suspense>
 
       <Suspense fallback={null}>
         <LatestScams />
