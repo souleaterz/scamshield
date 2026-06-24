@@ -64,19 +64,12 @@ export default async function Home({
             Companies
           </Link>
         </p>
-        <p className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+        <p>
           <Link
             href="/scams"
             className="font-medium text-blue-600 hover:text-blue-700"
           >
             Common scams &amp; how to spot them
-          </Link>
-          <span aria-hidden>·</span>
-          <Link
-            href="/pranks"
-            className="font-medium text-violet-600 hover:text-violet-700"
-          >
-            🪤 Scammer pranks
           </Link>
         </p>
         <p>
