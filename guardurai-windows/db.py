@@ -31,7 +31,18 @@ def init():
                 key   TEXT PRIMARY KEY,
                 value TEXT
             );
+            CREATE TABLE IF NOT EXISTS scans (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
         """)
+
+
+def add_scan() -> None:
+    """Record that a real-time/manual check ran, so the dashboard can show the
+    volume of activity (every page checked), not only the threats caught."""
+    with sqlite3.connect(DB_PATH) as c:
+        c.execute("INSERT INTO scans DEFAULT VALUES")
 
 
 def add_history(input_text: str, result: dict, source: str = "manual") -> None:
@@ -61,19 +72,38 @@ def get_history(limit: int = 100) -> list[dict]:
         ).fetchall()
     out = []
     for r in rows:
-        item = dict(r)
-        item["red_flags"] = json.loads(item["red_flags"] or "[]")
-        item["advice"] = json.loads(item["advice"] or "[]")
-        out.append(item)
+        red_flags = json.loads(r["red_flags"] or "[]")
+        advice = json.loads(r["advice"] or "[]")
+        created = r["created_at"] or ""
+        # SQLite stores UTC as "YYYY-MM-DD HH:MM:SS"; make it an ISO string the
+        # browser's Date() parses correctly (otherwise the UI shows "Invalid Date").
+        checked_at = created.replace(" ", "T") + "Z" if created else ""
+        # Map DB columns to the field names the UI reads.
+        out.append({
+            "input_text": r["input"],
+            "risk_level": r["risk_level"],
+            "source": r["source"],
+            "checked_at": checked_at,
+            "result_json": {
+                "risk_level": r["risk_level"],
+                "summary": r["summary"],
+                "detected_type": r["detected_type"],
+                "confidence": r["confidence"],
+                "red_flags": red_flags,
+                "advice": advice,
+            },
+        })
     return out
 
 
 def get_stats() -> dict:
     today = datetime.now().strftime("%Y-%m-%d")
     with sqlite3.connect(DB_PATH) as c:
-        total = c.execute("SELECT COUNT(*) FROM history").fetchone()[0]
+        # Total/today = everything we checked (the scans counter), so normal
+        # browsing visibly registers. Threats = the scams we actually caught.
+        total = c.execute("SELECT COUNT(*) FROM scans").fetchone()[0]
         today_n = c.execute(
-            "SELECT COUNT(*) FROM history WHERE date(created_at)=?", (today,)
+            "SELECT COUNT(*) FROM scans WHERE date(created_at)=?", (today,)
         ).fetchone()[0]
         threats = c.execute(
             "SELECT COUNT(*) FROM history WHERE risk_level='likely_scam'"

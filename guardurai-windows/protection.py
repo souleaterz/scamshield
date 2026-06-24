@@ -36,6 +36,7 @@ class ProtectionEngine:
         """Deep AI analysis from the Check tab. Always recorded to history."""
         result = api.analyze(text)
         if result and not result.get("_rate_limited"):
+            db.add_scan()
             db.add_history(text, result, source="manual")
         return result
 
@@ -61,6 +62,8 @@ class ProtectionEngine:
         result = api.passive_check(text)
         if not result:
             return
+        # Count every real check so the dashboard reflects activity.
+        db.add_scan()
         risk = result.get("risk_level", "safe")
         # Only record + surface real-time hits that matter, so history stays
         # meaningful and we don't fire a notification on every safe page load.

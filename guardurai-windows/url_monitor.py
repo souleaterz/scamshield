@@ -7,8 +7,26 @@ tab navigates to a new URL.
 """
 import time
 import threading
+import os
+import re
 import ctypes
 import ctypes.wintypes
+
+# The browser omnibox usually shows the host WITHOUT a scheme ("guardurai.com"
+# or "guardurai.com/family"), not "https://…". Treat anything that looks like a
+# hostname (no spaces, has a dot, a real letter TLD) as a URL and add https://.
+_OMNIBOX_RE = re.compile(r"^(https?://)?([a-z0-9-]+\.)+[a-z]{2,}(?:[:/?#].*)?$", re.I)
+
+
+def _normalize_omnibox(val: str) -> str | None:
+    val = (val or "").strip()
+    if not val or " " in val:
+        return None
+    if not _OMNIBOX_RE.match(val):
+        return None
+    if not val.lower().startswith(("http://", "https://")):
+        val = "https://" + val
+    return val
 
 # UI Automation COM interface constants
 UIA_EditControlTypeId = 0xC354
@@ -29,6 +47,7 @@ BROWSER_PROCESSES = {
 
 def _get_foreground_process() -> str:
     """Return the exe name of the foreground window's process (lowercase)."""
+    # Primary: psutil (declared in requirements).
     try:
         import win32gui
         import win32process
@@ -37,7 +56,47 @@ def _get_foreground_process() -> str:
         _, pid = win32process.GetWindowThreadProcessId(hwnd)
         return psutil.Process(pid).name().lower()
     except Exception:
-        return ""
+        pass
+    # Fallback: pure ctypes, so a missing/broken dependency can't silently
+    # disable browser monitoring (which is exactly what happened before).
+    return _foreground_process_ctypes()
+
+
+def _foreground_process_ctypes() -> str:
+    try:
+        from ctypes import wintypes
+        user32 = ctypes.windll.user32
+        kernel32 = ctypes.windll.kernel32
+
+        user32.GetForegroundWindow.restype = wintypes.HWND
+        user32.GetWindowThreadProcessId.argtypes = [
+            wintypes.HWND, ctypes.POINTER(wintypes.DWORD)
+        ]
+        kernel32.OpenProcess.restype = wintypes.HANDLE
+        kernel32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+        kernel32.QueryFullProcessImageNameW.argtypes = [
+            wintypes.HANDLE, wintypes.DWORD, wintypes.LPWSTR,
+            ctypes.POINTER(wintypes.DWORD),
+        ]
+        kernel32.QueryFullProcessImageNameW.restype = wintypes.BOOL
+
+        hwnd = user32.GetForegroundWindow()
+        pid = wintypes.DWORD()
+        user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+        PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+        handle = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+        if not handle:
+            return ""
+        try:
+            buf = ctypes.create_unicode_buffer(512)
+            size = wintypes.DWORD(512)
+            if kernel32.QueryFullProcessImageNameW(handle, 0, buf, ctypes.byref(size)):
+                return os.path.basename(buf.value).lower()
+        finally:
+            kernel32.CloseHandle(handle)
+    except Exception:
+        pass
+    return ""
 
 
 def _read_url_via_uia() -> str | None:
@@ -91,10 +150,10 @@ def _read_url_via_uia() -> str | None:
                 name_lower = str(name).lower()
                 # Chromium address bars
                 if "address" in name_lower or "search bar" in name_lower or "location" in name_lower:
-                    val = el.GetCurrentPropertyValue(UIA_ValueValuePropertyId) or ""
-                    val = str(val).strip()
-                    if val.startswith("http") or val.startswith("www."):
-                        return val
+                    val = str(el.GetCurrentPropertyValue(UIA_ValueValuePropertyId) or "")
+                    norm = _normalize_omnibox(val)
+                    if norm:
+                        return norm
             except Exception:
                 continue
 
