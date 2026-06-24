@@ -1,15 +1,20 @@
 // Guardurai Gmail integration
 // Runs on mail.google.com — detects open emails, injects a "Check with Guardurai"
 // button, extracts body + sender, and shows an inline verdict panel.
+//
+// Decoy lifecycle: once deployed, a decoy persists in chrome.storage.local so it
+// survives the card closing, email navigation, and page reloads. The card's ×
+// only *minimises* to a floating pill; the decoy is fully cleared only by the
+// explicit "End decoy" action.
 
 (function () {
   if (typeof chrome === "undefined" || !chrome.runtime?.id) return;
 
   let btnHost = null;
   let lastMessageId = null;
-  let decoyTimerInterval = null;
-  let decoyStartTime = null;
-  let decoySessionId = null;
+  let decoyTicker = null;
+  // { persona, reply, sessionId, senderEmail, startTime, reported } | null
+  let activeDecoy = null;
 
   // ── Email extraction ────────────────────────────────────────────────────────
 
@@ -102,6 +107,17 @@
       }
       #btn:hover:not(:disabled) { background: #1d4ed8; }
       #btn:disabled { background: #94a3b8; cursor: wait; }
+      /* Floating "decoy active" pill — reopens the card without re-checking */
+      #decoy-pill {
+        display: none; align-items: center; gap: 6px;
+        background: #7c3aed; color: #fff; border: none;
+        border-radius: 24px; padding: 10px 16px; cursor: pointer;
+        font: 600 13px -apple-system, "Segoe UI", sans-serif;
+        box-shadow: 0 2px 14px rgba(124,58,237,.45); transition: background .15s;
+        position: fixed; bottom: 72px; right: 96px; z-index: 99999;
+      }
+      #decoy-pill:hover { background: #6d28d9; }
+      #decoy-pill .pill-time { font-variant-numeric: tabular-nums; letter-spacing: .04em; }
       .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
       .badge { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px; color: #fff; }
       .close { cursor: pointer; border: none; background: none; color: #94a3b8; font-size: 20px; line-height: 1; flex-shrink: 0; }
@@ -161,11 +177,19 @@
         border-radius: 8px; text-align: center;
         font-size: 11px; color: #7c3aed;
       }
-      .timer-count { font-size: 18px; font-weight: 700; display: block; letter-spacing: .04em; }
+      .timer-count { font-size: 18px; font-weight: 700; display: block; letter-spacing: .04em; font-variant-numeric: tabular-nums; }
+      .end-decoy { margin-top: 10px; text-align: center; }
+      .end-decoy button {
+        background: none; border: none; color: #94a3b8; font-size: 11px;
+        cursor: pointer; text-decoration: underline;
+        font-family: -apple-system, "Segoe UI", sans-serif;
+      }
+      .end-decoy button:hover { color: #ef4444; }
       .limit-note { margin-top: 8px; font-size: 11px; color: #64748b; text-align: center; }
       .limit-note a { color: #7c3aed; text-decoration: none; }
     </style>
     <div id="panel"></div>
+    <button id="decoy-pill">🪤 Decoy active · <span class="pill-time" id="decoy-pill-time">00:00</span></button>
     <button id="btn">🛡️ Check email</button>`;
   }
 
@@ -181,12 +205,20 @@
 
     const btn = shadow.getElementById("btn");
     const panel = shadow.getElementById("panel");
+    const pill = shadow.getElementById("decoy-pill");
 
     btn.addEventListener("click", () => void runCheck(shadow, btn, panel));
+    // Reopen an existing decoy — no re-check, no re-deploy, same persona.
+    pill.addEventListener("click", () => renderDecoyCard(shadow, panel));
+
+    // Restore the pill (and resume ticking) if a decoy is already active.
+    refreshDecoyUi(shadow);
   }
 
   function removeButton() {
-    stopDecoyTimer();
+    // Leaving the email view (e.g. back to inbox) tears down the host, but the
+    // decoy stays alive in storage so it can resume when an email is reopened.
+    stopTicker();
     if (btnHost) {
       btnHost.remove();
       btnHost = null;
@@ -201,6 +233,7 @@
     btn.textContent = "Scanning…";
     panel.innerHTML = '<p class="muted">Scanning this email for scam signals…</p>';
     panel.style.display = "block";
+    refreshDecoyUi(shadow); // hide the pill while the card is open
 
     const text = extractEmail();
     if (!text) {
@@ -300,6 +333,8 @@
   }
 
   function deployDecoy(shadow, panel, emailText, country) {
+    const senderEmail = extractSenderEmail();
+
     panel.innerHTML = `
       <div class="row">
         <strong style="font-size:13px;">🪤 Generating decoy…</strong>
@@ -330,14 +365,39 @@
           addCloseListener(shadow, panel);
           return;
         }
-        renderDecoyCard(shadow, panel, resp.data);
+
+        // Finalise any previous decoy before replacing it.
+        if (activeDecoy) {
+          const secs = elapsedSecs();
+          sendDecoyHeartbeat(secs);
+          flushLocal(secs);
+        }
+
+        activeDecoy = {
+          persona: resp.data.persona,
+          reply: resp.data.reply ?? null,
+          sessionId: resp.data.sessionId ?? null,
+          senderEmail,
+          startTime: Date.now(),
+          reported: 0,
+        };
+        persistActiveDecoy();
+
+        // Count this deploy for the popup stats.
+        chrome.storage.local.get({ decoyCount: 0 }, (s) => {
+          chrome.storage.local.set({ decoyCount: (s.decoyCount || 0) + 1 });
+        });
+
+        renderDecoyCard(shadow, panel);
       },
     );
   }
 
-  function renderDecoyCard(shadow, panel, data) {
-    const { persona, reply } = data;
-    const senderEmail = extractSenderEmail();
+  // Renders (or re-renders) the deployed-decoy card from activeDecoy. Safe to
+  // call any number of times — this is how the pill reopens the card.
+  function renderDecoyCard(shadow, panel) {
+    if (!activeDecoy) return;
+    const { persona, reply, senderEmail } = activeDecoy;
 
     const bankRows = Object.entries(persona.bankDetails ?? {})
       .map(([k, v]) => fieldRow(k, v))
@@ -350,12 +410,15 @@
     panel.innerHTML = `
       <div class="row">
         <strong style="font-size:13px;">🪤 Decoy deployed</strong>
-        <button class="close" data-close>×</button>
+        <button class="close" data-min title="Minimise">×</button>
       </div>
+      <p class="muted" style="margin-top:6px;font-size:12px;">
+        ${esc(persona.name.full)} from ${esc(persona.address.town)} is keeping them busy.
+      </p>
 
       <div class="timer">
         Scammer time wasted
-        <span class="timer-count" id="decoy-timer">00:00</span>
+        <span class="timer-count" id="decoy-timer">${fmt(elapsedSecs())}</span>
       </div>
 
       <div class="section-h">Fake identity</div>
@@ -377,13 +440,18 @@
         <div class="action-row">
           <button class="action-btn copy-btn" id="copy-reply-btn">📋 Copy reply</button>
           ${composeUrl ? `<button class="action-btn compose-btn" id="compose-btn">✉️ Open in Gmail</button>` : ""}
-        </div>` : ""}`;
+        </div>` : ""}
 
-    addCloseListener(shadow, panel);
-    // Set the session id AFTER startDecoyTimer: it calls stopDecoyTimer() first,
-    // which clears decoySessionId while flushing any previous session.
-    startDecoyTimer(shadow);
-    decoySessionId = data.sessionId ?? null;
+      <div class="end-decoy"><button data-end>End decoy &amp; stop timer</button></div>`;
+
+    panel.style.display = "block";
+
+    // × minimises to the pill (keeps the decoy alive); "End decoy" clears it.
+    shadow.querySelector("[data-min]")?.addEventListener("click", () => {
+      panel.style.display = "none";
+      refreshDecoyUi(shadow);
+    });
+    shadow.querySelector("[data-end]")?.addEventListener("click", () => endDecoy(shadow));
 
     shadow.getElementById("copy-reply-btn")?.addEventListener("click", () => {
       const text = shadow.getElementById("decoy-reply")?.value ?? reply ?? "";
@@ -398,66 +466,120 @@
         window.open(composeUrl, "_blank", "noopener,noreferrer");
       });
     }
+
+    startTicker(shadow);
+    refreshDecoyUi(shadow); // card is open → hide the pill
   }
 
   function fieldRow(label, value) {
     return `<div class="field"><span class="field-label">${esc(label)}</span><span class="field-value">${esc(value)}</span></div>`;
   }
 
-  // ── Decoy timer ─────────────────────────────────────────────────────────────
+  // ── Decoy timer + persistence ─────────────────────────────────────────────────
 
-  function startDecoyTimer(shadow) {
-    stopDecoyTimer();
-    decoyStartTime = Date.now();
-    decoyTimerInterval = setInterval(() => {
-      const el = shadow.getElementById("decoy-timer");
-      if (!el) { stopDecoyTimer(); return; }
-      const secs = Math.floor((Date.now() - decoyStartTime) / 1000);
-      const m = String(Math.floor(secs / 60)).padStart(2, "0");
-      const s = String(secs % 60).padStart(2, "0");
-      el.textContent = `${m}:${s}`;
-      // Report progress to the server every 15s so the global counter stays live
-      // even before the user closes the panel.
-      if (secs > 0 && secs % 15 === 0) sendDecoyHeartbeat(secs);
-    }, 1000);
+  function fmt(secs) {
+    const m = String(Math.floor(secs / 60)).padStart(2, "0");
+    const s = String(secs % 60).padStart(2, "0");
+    return `${m}:${s}`;
+  }
 
-    // Increment deploy count immediately
-    chrome.storage.local.get({ decoyCount: 0 }, (s) => {
-      chrome.storage.local.set({ decoyCount: (s.decoyCount || 0) + 1 });
+  function elapsedSecs() {
+    return activeDecoy ? Math.floor((Date.now() - activeDecoy.startTime) / 1000) : 0;
+  }
+
+  function persistActiveDecoy() {
+    if (activeDecoy) chrome.storage.local.set({ activeDecoy });
+    else chrome.storage.local.remove("activeDecoy");
+  }
+
+  // Shows/hides the pill based on whether a decoy is active and the card is open,
+  // and keeps the ticker running while there's a decoy to track.
+  function refreshDecoyUi(shadow) {
+    const pill = shadow.getElementById("decoy-pill");
+    const panel = shadow.getElementById("panel");
+    if (!pill) return;
+
+    if (activeDecoy) {
+      const cardOpen = panel && panel.style.display === "block";
+      pill.style.display = cardOpen ? "none" : "flex";
+      const t = shadow.getElementById("decoy-pill-time");
+      if (t) t.textContent = fmt(elapsedSecs());
+      startTicker(shadow);
+    } else {
+      pill.style.display = "none";
+      stopTicker();
+    }
+  }
+
+  function startTicker(shadow) {
+    if (decoyTicker || !activeDecoy) return;
+    tick(shadow);
+    const secs = elapsedSecs();
+    if (secs > 0) report(secs); // catch up after a reopen/page reload
+    decoyTicker = setInterval(() => tick(shadow), 1000);
+  }
+
+  function stopTicker() {
+    if (decoyTicker) {
+      clearInterval(decoyTicker);
+      decoyTicker = null;
+    }
+  }
+
+  function tick(shadow) {
+    if (!activeDecoy) { stopTicker(); return; }
+    const secs = elapsedSecs();
+    const cardTimer = shadow.getElementById("decoy-timer");
+    if (cardTimer) cardTimer.textContent = fmt(secs);
+    const pillTime = shadow.getElementById("decoy-pill-time");
+    if (pillTime) pillTime.textContent = fmt(secs);
+    if (secs > 0 && secs % 15 === 0) report(secs);
+  }
+
+  // Reports elapsed time to the server (global counter) and to local storage
+  // (popup stats). Both are idempotent: the server SETs the value, and the local
+  // total only adds the unreported delta.
+  function report(secs) {
+    sendDecoyHeartbeat(secs);
+    flushLocal(secs);
+  }
+
+  function flushLocal(secs) {
+    if (!activeDecoy) return;
+    const delta = secs - (activeDecoy.reported || 0);
+    if (delta <= 0) return;
+    activeDecoy.reported = secs;
+    persistActiveDecoy();
+    chrome.storage.local.get({ decoySecondsWasted: 0 }, (s) => {
+      chrome.storage.local.set({ decoySecondsWasted: (s.decoySecondsWasted || 0) + delta });
     });
   }
 
-  function stopDecoyTimer() {
-    if (decoyTimerInterval) {
-      clearInterval(decoyTimerInterval);
-      decoyTimerInterval = null;
-    }
-    if (decoyStartTime) {
-      const elapsed = Math.floor((Date.now() - decoyStartTime) / 1000);
-      if (elapsed > 0) {
-        // Local cumulative total — drives the popup's "time wasted" stat.
-        chrome.storage.local.get({ decoySecondsWasted: 0 }, (s) => {
-          chrome.storage.local.set({ decoySecondsWasted: (s.decoySecondsWasted || 0) + elapsed });
-        });
-        // Final report to the server for the global counter.
-        sendDecoyHeartbeat(elapsed);
-      }
-      decoyStartTime = null;
-    }
-    decoySessionId = null;
-  }
-
   function sendDecoyHeartbeat(secondsWasted) {
-    if (!decoySessionId) return;
+    if (!activeDecoy?.sessionId) return;
     try {
       chrome.runtime.sendMessage({
         type: "decoyHeartbeat",
-        sessionId: decoySessionId,
+        sessionId: activeDecoy.sessionId,
         secondsWasted,
       });
     } catch {
       // Extension context can be torn down mid-send; ignore.
     }
+  }
+
+  function endDecoy(shadow) {
+    if (activeDecoy) {
+      const secs = elapsedSecs();
+      sendDecoyHeartbeat(secs);
+      flushLocal(secs);
+    }
+    activeDecoy = null;
+    persistActiveDecoy();
+    stopTicker();
+    const panel = shadow.getElementById("panel");
+    if (panel) panel.style.display = "none";
+    refreshDecoyUi(shadow);
   }
 
   // ── Shared helpers ───────────────────────────────────────────────────────────
@@ -469,10 +591,12 @@
     </div>`;
   }
 
+  // Generic close: just hides the panel. (The decoy card wires its own × and
+  // "End decoy" handlers instead.)
   function addCloseListener(shadow, panel) {
     shadow.querySelector("[data-close]")?.addEventListener("click", () => {
       panel.style.display = "none";
-      stopDecoyTimer();
+      refreshDecoyUi(shadow); // reveal the pill again if a decoy is still active
     });
   }
 
@@ -487,8 +611,9 @@
     const id = currentMessageId();
     if (id) {
       if (id !== lastMessageId) {
+        // A different email is open — collapse the card, but keep any active
+        // decoy running and show its pill so it can be reopened.
         lastMessageId = id;
-        stopDecoyTimer();
         if (btnHost) {
           const shadow = btnHost.shadowRoot;
           if (shadow) {
@@ -496,6 +621,7 @@
             if (panel) panel.style.display = "none";
             const btn = shadow.getElementById("btn");
             if (btn) btn.innerHTML = "🛡️ Check email";
+            refreshDecoyUi(shadow);
           }
         }
       }
@@ -507,8 +633,12 @@
 
   const observer = new MutationObserver(checkVisibility);
 
-  setTimeout(() => {
-    observer.observe(document.body, { childList: true, subtree: true });
-    checkVisibility();
-  }, 1500);
+  // Rehydrate any in-flight decoy before wiring up the UI.
+  chrome.storage.local.get({ activeDecoy: null }, (s) => {
+    activeDecoy = s.activeDecoy || null;
+    setTimeout(() => {
+      observer.observe(document.body, { childList: true, subtree: true });
+      checkVisibility();
+    }, 1500);
+  });
 })();
