@@ -1,0 +1,46 @@
+name: Sync FTC scam phone numbers
+
+# Pulls newly-reported US scam/robocall numbers from the FTC Do Not Call data
+# into the community scam database. Same reliable-external-trigger pattern as
+# the URLhaus sync — fixed schedule with a visible green/red run history.
+
+on:
+  schedule:
+    - cron: "30 7 * * *" # 07:30 UTC daily (offset from the URLhaus job)
+  workflow_dispatch: # manual "Run workflow" button in the Actions tab
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger FTC sync endpoint
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::CRON_SECRET repo secret is not set"
+            exit 1
+          fi
+
+          echo "Calling FTC sync endpoint…"
+          response=$(curl -sS --max-time 120 \
+            -w "\n%{http_code}" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "https://guardurai.com/api/cron/sync-ftc-scams?pages=10")
+
+          body=$(echo "$response" | sed '$d')
+          status=$(echo "$response" | tail -n1)
+
+          echo "HTTP $status"
+          echo "Response: $body"
+
+          if [ "$status" -lt 200 ] || [ "$status" -ge 300 ]; then
+            echo "::error::FTC sync endpoint returned HTTP $status"
+            exit 1
+          fi
+          if echo "$body" | grep -q '"ok":false'; then
+            echo "::error::FTC sync reported ok:false (some upserts failed)"
+            exit 1
+          fi
+
+          echo "FTC sync completed successfully."

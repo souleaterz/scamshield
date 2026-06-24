@@ -60,7 +60,7 @@ export async function lookupCommunityReports(text: string): Promise<CommunityMat
 /** Submit one or more identifiers as community scam reports. */
 export async function submitCommunityReport(
   items: { inputType: "domain" | "phone"; inputValue: string }[],
-  source: "user" | "fca" | "urlhaus" | "reddit" = "user",
+  source: "user" | "fca" | "urlhaus" | "reddit" | "ftc" = "user",
   label?: string,
 ): Promise<void> {
   const supabase = getSupabaseAdmin();
@@ -107,7 +107,9 @@ export function describeCommunityReports(matches: CommunityMatch[]): string {
           ? "URLhaus malware/phishing database"
           : m.source === "reddit"
             ? `Reddit r/ScamNumbers (${m.reportCount} post${m.reportCount !== 1 ? "s" : ""})`
-            : `${m.reportCount} Guardurai user report${m.reportCount !== 1 ? "s" : ""}`;
+            : m.source === "ftc"
+              ? `FTC Do Not Call registry (${m.reportCount} unwanted-call/robocall complaint${m.reportCount !== 1 ? "s" : ""})`
+              : `${m.reportCount} Guardurai user report${m.reportCount !== 1 ? "s" : ""}`;
     return `- ${m.inputValue} (${m.inputType}): flagged by ${who}`;
   });
   return `Community scam database matches — treat these as STRONG evidence of fraud:\n${lines.join("\n")}`;
