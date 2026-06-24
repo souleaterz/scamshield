@@ -113,18 +113,33 @@ async function checkAuth() {
       cache: "no-store",
     });
     const data = res.ok ? await res.json() : null;
+    const openTab = (path) => {
+      chrome.tabs.create({ url: `${GUARDURAI_API}${path}` });
+      window.close();
+    };
+
     if (data?.signedIn) {
-      authText.textContent = "Signed in ✓";
+      const name = data.firstName ? esc(data.firstName) : "Signed in";
+      const tier = data.tier || "free";
+      const TIER_LABEL = { free: "Free plan", pro: "Pro ✓", family: "Family ✓" };
+      authText.textContent = `${name} · ${TIER_LABEL[tier] || "Free plan"}`;
       authText.classList.add("ok");
-      authBtn.style.display = "none";
+
+      if (tier === "free") {
+        // Signed-in but free — the prime upgrade target. Push Family.
+        authBtn.textContent = "Upgrade";
+        authBtn.style.display = "";
+        authBtn.onclick = () => openTab("/family?ref=ext-popup");
+      } else {
+        authBtn.style.display = "none";
+      }
     } else {
-      authText.textContent = "Not signed in";
+      // Anonymous — capture them. Lead with the benefit, not just "Sign in".
+      authText.textContent = "Sign in to sync your protection";
+      authText.classList.remove("ok");
       authBtn.textContent = "Sign in";
       authBtn.style.display = "";
-      authBtn.onclick = () => {
-        chrome.tabs.create({ url: `${GUARDURAI_API}/sign-in` });
-        window.close();
-      };
+      authBtn.onclick = () => openTab("/sign-in?ref=ext-popup");
     }
   } catch {
     authText.textContent = "Couldn't check sign-in status";
