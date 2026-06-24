@@ -20,6 +20,7 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
+import ws from "ws";
 import { randomInt } from "node:crypto";
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
@@ -91,6 +92,8 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
+  // Node < 22 has no native WebSocket; supabase-js needs ws for its client.
+  realtime: { transport: ws },
 });
 
 const { error } = await supabase.from("redemption_codes").insert(rows);
