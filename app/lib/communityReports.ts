@@ -66,7 +66,7 @@ export async function submitCommunityReport(
   const supabase = getSupabaseAdmin();
   if (!supabase || items.length === 0) return;
 
-  await Promise.all(
+  const results = await Promise.all(
     items.map((item) =>
       supabase.rpc("increment_scam_report", {
         p_input_type: item.inputType,
@@ -76,6 +76,13 @@ export async function submitCommunityReport(
       }),
     ),
   );
+
+  // supabase-js resolves (never rejects) on a DB error — surface it so callers
+  // don't count a swallowed failure as a successful write.
+  const firstError = results.find((r) => r.error)?.error;
+  if (firstError) {
+    throw new Error(`increment_scam_report failed: ${firstError.message}`);
+  }
 }
 
 /** Extract reportable identifiers from a verdict's link/phone checks. */
