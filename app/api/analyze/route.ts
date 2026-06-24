@@ -166,6 +166,20 @@ export async function POST(request: Request) {
       );
     }
 
+    // Depth-gate: free users already in our funnel — the extension, or anyone
+    // signed in — get the verdict but not the AI explanation/advice. That's the
+    // Pro unlock. The anonymous web checker stays full so it keeps building
+    // trust and SEO. Paying users always get everything.
+    const isExtension =
+      request.headers.get("x-guardurai-client") === "extension";
+    const paid = tier === "pro" || tier === "family";
+    if (!paid && (isExtension || userId !== null)) {
+      const gated: Record<string, unknown> = { ...fullVerdict, locked: true };
+      delete gated.explanation;
+      delete gated.advice;
+      return NextResponse.json(gated);
+    }
+
     return NextResponse.json(fullVerdict);
   } catch (err) {
     if (err instanceof Error && err.message.includes("ANTHROPIC_API_KEY")) {

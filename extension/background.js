@@ -16,7 +16,7 @@ async function runPassiveCheck(url) {
   try {
     const res = await fetch(`${GUARDURAI_API}/api/passive-check`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "x-guardurai-client": "extension" },
       body: JSON.stringify({ url }),
       credentials: "include",
     });
@@ -41,7 +41,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.type === "analyzeText") {
     fetch(`${GUARDURAI_API}/api/analyze`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "x-guardurai-client": "extension" },
       credentials: "include",
       body: JSON.stringify({ text: msg.text }),
     })
@@ -93,7 +93,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   try {
     const res = await fetch(`${GUARDURAI_API}/api/analyze`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "x-guardurai-client": "extension" },
       // Send Guardurai cookies so signed-in users get their plan (Pro/Unlimited);
       // falls back to an anonymous free check if not signed in.
       credentials: "include",
@@ -198,7 +198,11 @@ function renderOverlay(payload) {
       <p class="summary">${esc(v.summary)}</p>
       <div class="meta">Confidence ${esc(v.confidence)}% · ${esc(v.detected_type)}</div>
       ${flags ? `<div class="h">Red flags</div>${flags}` : ""}
-      <div class="foot"><a href="${esc(fullUrl)}" target="_blank" rel="noreferrer">See full result on Guardurai →</a></div>`;
+      ${
+        v.locked
+          ? `<div class="foot">🔒 <a href="${esc(payload.site)}/pricing?ref=ext-locked" target="_blank" rel="noreferrer">Unlock why it's risky &amp; what to do →</a></div>`
+          : `<div class="foot"><a href="${esc(fullUrl)}" target="_blank" rel="noreferrer">See full result on Guardurai →</a></div>`
+      }`;
   }
 
   shadow.innerHTML = `<style>

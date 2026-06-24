@@ -59,13 +59,19 @@ function renderVerdict(data) {
         .map((f) => `<div class="r-flag"><span class="r-dot">•</span>${esc(f)}</div>`)
         .join("")
     : "";
+  // Locked = free user; the AI explanation + advice are held back for Pro.
+  const footer = data.locked
+    ? `<div class="r-meta" style="margin-top:10px;">🔒 ` +
+      `<a class="r-link" href="${esc(GUARDURAI_API)}/pricing?ref=ext-locked" target="_blank" rel="noreferrer">` +
+      `Unlock why it's risky &amp; what to do →</a></div>`
+    : `<div class="r-meta" style="margin-top:8px;">` +
+      `<a class="r-link" href="${esc(fullResultUrl(data))}" target="_blank" rel="noreferrer">See full result →</a></div>`;
   show(
     `<span class="badge" style="background:${color};">${esc(label)}</span>` +
       `<p class="r-summary">${esc(data.summary)}</p>` +
       `<div class="r-meta">Confidence ${esc(data.confidence)}% · ${esc(data.detected_type)}</div>` +
       (flags ? `<div class="r-flags">${flags}</div>` : "") +
-      `<div class="r-meta" style="margin-top:8px;">` +
-      `<a class="r-link" href="${esc(fullResultUrl(data))}" target="_blank" rel="noreferrer">See full result →</a></div>`,
+      footer,
   );
 }
 
@@ -79,7 +85,7 @@ async function scanPage() {
     if (!base64) throw new Error("capture failed");
     const res = await fetch(`${GUARDURAI_API}/api/analyze`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "x-guardurai-client": "extension" },
       credentials: "include",
       body: JSON.stringify({ image: { media_type: "image/png", data: base64 } }),
     });

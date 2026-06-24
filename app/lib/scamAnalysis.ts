@@ -61,6 +61,12 @@ export interface Verdict {
   phone_checks?: PhoneCheck[];
   /** Community-reported matches for any domain or phone found in the input. */
   community_reports?: CommunityMatch[];
+  /**
+   * Set by the API when the deep AI explanation/advice have been withheld for a
+   * free user in our funnel (extension or signed-in). The fields are omitted;
+   * the UI shows an upgrade prompt in their place.
+   */
+  locked?: boolean;
 }
 
 export interface CommunityMatch {

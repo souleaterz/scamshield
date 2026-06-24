@@ -301,32 +301,54 @@ export default function VerdictCard({
           </section>
         )}
 
-        <section>
-          <h3 className="text-sm font-semibold text-slate-900">What this means</h3>
-          <p className="mt-1.5 text-sm leading-relaxed text-slate-600">
-            {verdict.explanation}
-          </p>
-        </section>
-
-        {verdict.advice.length > 0 && (
-          <section className="rounded-xl border border-blue-100 bg-blue-50/60 p-4">
-            <h3 className="text-sm font-semibold text-blue-900">
-              What to do next
+        {verdict.locked ? (
+          <section className="rounded-xl border border-blue-200 bg-blue-50/70 p-5 text-center">
+            <h3 className="text-sm font-semibold text-slate-900">
+              🔒 Unlock the full breakdown
             </h3>
-            <ul className="mt-2.5 space-y-2">
-              {verdict.advice.map((tip, i) => (
-                <li key={i} className="flex gap-2.5 text-sm text-slate-700">
-                  <span
-                    aria-hidden
-                    className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-blue-500 text-[10px] font-bold text-white"
-                  >
-                    ✓
-                  </span>
-                  <span>{tip}</span>
-                </li>
-              ))}
-            </ul>
+            <p className="mx-auto mt-1.5 max-w-sm text-sm text-slate-600">
+              Pro explains exactly why this is risky and gives you clear,
+              step-by-step advice on what to do next.
+            </p>
+            <Link
+              href="/pricing"
+              className="mt-3 inline-block rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700"
+            >
+              Upgrade to unlock
+            </Link>
           </section>
+        ) : (
+          <>
+            <section>
+              <h3 className="text-sm font-semibold text-slate-900">
+                What this means
+              </h3>
+              <p className="mt-1.5 text-sm leading-relaxed text-slate-600">
+                {verdict.explanation}
+              </p>
+            </section>
+
+            {verdict.advice && verdict.advice.length > 0 && (
+              <section className="rounded-xl border border-blue-100 bg-blue-50/60 p-4">
+                <h3 className="text-sm font-semibold text-blue-900">
+                  What to do next
+                </h3>
+                <ul className="mt-2.5 space-y-2">
+                  {verdict.advice.map((tip, i) => (
+                    <li key={i} className="flex gap-2.5 text-sm text-slate-700">
+                      <span
+                        aria-hidden
+                        className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-blue-500 text-[10px] font-bold text-white"
+                      >
+                        ✓
+                      </span>
+                      <span>{tip}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+          </>
         )}
       </div>
     </div>
