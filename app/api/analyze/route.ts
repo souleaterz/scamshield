@@ -12,7 +12,7 @@ import { checkRateLimit, recordCheck } from "@/app/lib/rateLimit";
 import { getTierForUser } from "@/app/lib/subscription";
 import { checkUrlsInText, describeChecks } from "@/app/lib/urlReputation";
 import { checkPhonesInText, describePhoneChecks } from "@/app/lib/phoneReputation";
-import { lookupCommunityReports, describeCommunityReports } from "@/app/lib/communityReports";
+import { lookupCommunityReports, describeCommunityReports, autoReportScamFromVerdict } from "@/app/lib/communityReports";
 import { upsertEntitiesFromVerdict } from "@/app/lib/entityPages";
 import { notifyGuardianOfScam } from "@/app/lib/family";
 import { incrementGlobalStats } from "@/app/lib/globalStats";
@@ -152,9 +152,12 @@ export async function POST(request: Request) {
     after(() => void upsertEntitiesFromVerdict(fullVerdict));
 
     // A scam caught here (e.g. an email scanned via the extension) is a threat
-    // blocked — feed it into the global homepage counter.
+    // blocked — feed it into the global homepage counter, and add its domains/
+    // phones to the community database so passive protection warns future
+    // visitors to the same site.
     if (verdict.risk_level === "likely_scam") {
       after(() => void incrementGlobalStats(0, 1));
+      after(() => void autoReportScamFromVerdict(fullVerdict));
     }
 
     // If a protected family member hits a likely scam, alert their guardian.
