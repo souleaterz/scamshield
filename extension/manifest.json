@@ -2,12 +2,13 @@
   "manifest_version": 3,
   "name": "Guardurai — Scam Checker",
   "version": "1.7.0",
-  "description": "Guardurai uses AI to detect scams, verify companies, and protect you online — right-click any text to check it instantly.",
+  "description": "Real-time scam & phishing protection for Chrome. Guardurai warns you about dangerous sites as you browse, and checks any text, link, email or number with AI.",
   "permissions": [
     "contextMenus",
     "scripting",
     "activeTab",
-    "storage"
+    "storage",
+    "alarms"
   ],
   "host_permissions": [
     "https://guardurai.com/*"

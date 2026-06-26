@@ -22,10 +22,18 @@
   })();
 
   // Tally pages monitored, so the popup can show the value Guardurai delivers.
+  // unsyncedProtected accumulates the delta the background worker syncs to the
+  // server for the global homepage counter.
   try {
-    chrome.storage.local.get({ statProtected: 0 }, (s) => {
-      chrome.storage.local.set({ statProtected: (s.statProtected || 0) + 1 });
-    });
+    chrome.storage.local.get(
+      { statProtected: 0, unsyncedProtected: 0 },
+      (s) => {
+        chrome.storage.local.set({
+          statProtected: (s.statProtected || 0) + 1,
+          unsyncedProtected: (s.unsyncedProtected || 0) + 1,
+        });
+      },
+    );
   } catch (e) {
     /* ignore */
   }
@@ -83,11 +91,18 @@
   function showBanner(result) {
     if (document.getElementById("ss-passive-host")) return;
 
-    // Count threats caught (suspicious or scam) for the popup's value stat.
+    // Count threats caught (suspicious or scam) for the popup's value stat, and
+    // accumulate the delta for the global server-side total.
     try {
-      chrome.storage.local.get({ statBlocked: 0 }, (s) => {
-        chrome.storage.local.set({ statBlocked: (s.statBlocked || 0) + 1 });
-      });
+      chrome.storage.local.get(
+        { statBlocked: 0, unsyncedBlocked: 0 },
+        (s) => {
+          chrome.storage.local.set({
+            statBlocked: (s.statBlocked || 0) + 1,
+            unsyncedBlocked: (s.unsyncedBlocked || 0) + 1,
+          });
+        },
+      );
     } catch (e) {
       /* ignore */
     }

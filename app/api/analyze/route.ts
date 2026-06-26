@@ -80,8 +80,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    // Identify the caller: signed-in users by Clerk ID (cookie or paired
-    // desktop token), everyone else by IP.
+    // Identify the caller: signed-in users by Clerk ID (cookie), everyone else
+    // by IP.
     const userId = await getUserIdFromRequest(request);
     const ip = getClientIp(request);
     const identifier = userId ? `user:${userId}` : `ip:${ip}`;

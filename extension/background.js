@@ -59,50 +59,47 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     return true;
   }
 
-  if (msg.type === "deployDecoy") {
-    fetch(`${GUARDURAI_API}/api/decoy/persona`, {
+  if (msg.type === "flushStats") {
+    flushStats().finally(() => sendResponse({ ok: true }));
+    return true;
+  }
+});
+
+// ── Global protection stats sync ────────────────────────────────────────────
+// content.js tallies pages protected / threats blocked locally and accumulates
+// unsynced deltas. We flush those deltas to the server so the homepage can show
+// a live total across every Guardurai user.
+
+async function flushStats() {
+  const { unsyncedProtected = 0, unsyncedBlocked = 0 } = await chrome.storage.local.get({
+    unsyncedProtected: 0,
+    unsyncedBlocked: 0,
+  });
+  if (unsyncedProtected <= 0 && unsyncedBlocked <= 0) return;
+
+  try {
+    const res = await fetch(`${GUARDURAI_API}/api/stats/contribute`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-guardurai-client": "extension" },
-      credentials: "include",
-      body: JSON.stringify({ scamEmailContent: msg.scamEmailContent, country: msg.country, scammerEmail: msg.scammerEmail }),
-    })
-      .then(async (res) => {
-        const data = await res.json().catch(() => ({}));
-        if (res.status === 429) {
-          sendResponse({ ok: false, limitReached: true, error: data?.error });
-        } else if (!res.ok) {
-          sendResponse({ ok: false, error: data?.error ?? "Request failed" });
-        } else {
-          sendResponse({ ok: true, data });
-        }
-      })
-      .catch((err) => sendResponse({ ok: false, error: err.message }));
-    return true;
+      body: JSON.stringify({ pagesProtected: unsyncedProtected, threatsBlocked: unsyncedBlocked }),
+    });
+    if (!res.ok) return; // keep deltas; retry on the next flush
+    // Subtract exactly what we sent so increments during the request aren't lost.
+    const cur = await chrome.storage.local.get({ unsyncedProtected: 0, unsyncedBlocked: 0 });
+    await chrome.storage.local.set({
+      unsyncedProtected: Math.max(0, cur.unsyncedProtected - unsyncedProtected),
+      unsyncedBlocked: Math.max(0, cur.unsyncedBlocked - unsyncedBlocked),
+    });
+  } catch {
+    /* offline — try again next flush */
   }
+}
 
-  if (msg.type === "decoyStatus") {
-    fetch(`${GUARDURAI_API}/api/decoy/status?sessionId=${encodeURIComponent(msg.sessionId)}`, {
-      headers: { "x-guardurai-client": "extension" },
-      credentials: "include",
-    })
-      .then(async (res) => sendResponse(res.ok ? await res.json() : null))
-      .catch(() => sendResponse(null));
-    return true;
-  }
-
-  if (msg.type === "decoyHeartbeat") {
-    // Report a decoy session's elapsed time so the global counter stays live.
-    // Fire-and-forget — a dropped heartbeat just means a slightly stale total.
-    fetch(`${GUARDURAI_API}/api/decoy/heartbeat`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-guardurai-client": "extension" },
-      credentials: "include",
-      body: JSON.stringify({ sessionId: msg.sessionId, secondsWasted: msg.secondsWasted }),
-    })
-      .then(() => sendResponse({ ok: true }))
-      .catch(() => sendResponse({ ok: false }));
-    return true;
-  }
+// Flush periodically (MV3 service workers sleep, so an alarm is the reliable
+// way to wake and sync).
+chrome.alarms.create("flushStats", { periodInMinutes: 5 });
+chrome.alarms.onAlarm.addListener((a) => {
+  if (a.name === "flushStats") void flushStats();
 });
 
 const MENU_ID = "guardurai-check";

@@ -3,7 +3,7 @@ import Link from "next/link";
 import ScamChecker from "@/app/components/ScamChecker";
 import GuarduraiMascot from "@/app/components/GuarduraiMascot";
 import LatestScams from "@/app/components/LatestScams";
-import DecoyCounter from "@/app/components/DecoyCounter";
+import GlobalStats from "@/app/components/GlobalStats";
 import { getUserId, isClerkConfigured } from "@/app/lib/auth";
 import { getTierForUser } from "@/app/lib/subscription";
 
@@ -29,7 +29,9 @@ export default async function Home({
             and find out if it&apos;s a scam.
           </p>
           <p className="mt-1 text-xs text-slate-400">
-            Email headers? Profile photos? UK companies? All in one place.
+            Or add the free{" "}
+            <span className="font-medium text-slate-500">Chrome extension</span>{" "}
+            for automatic, real-time protection as you browse.
           </p>
         </div>
       </header>
@@ -42,7 +44,7 @@ export default async function Home({
       />
 
       <Suspense fallback={null}>
-        <DecoyCounter />
+        <GlobalStats />
       </Suspense>
 
       <Suspense fallback={null}>

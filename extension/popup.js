@@ -25,40 +25,13 @@ chrome.storage.local.get({ statProtected: 0, statBlocked: 0 }, (s) => {
   if (b) b.textContent = (s.statBlocked || 0).toLocaleString();
 });
 
-// ── Decoy stats ───────────────────────────────────────────────────────────────
-
-function formatDecoyTime(seconds) {
-  if (seconds < 60) return `${seconds}s`;
-  const mins = Math.floor(seconds / 60);
-  if (mins < 60) return `${mins} min`;
-  const hrs = Math.floor(mins / 60);
-  const rem = mins % 60;
-  return rem > 0 ? `${hrs}h ${rem}m` : `${hrs}h`;
+// Nudge the background worker to sync our local protection stats to the global
+// counter whenever the popup is opened.
+try {
+  chrome.runtime.sendMessage({ type: "flushStats" });
+} catch (e) {
+  /* ignore */
 }
-
-chrome.storage.local.get({ decoyCount: 0, decoySecondsWasted: 0 }, (s) => {
-  const statEl = document.getElementById("decoy-stat");
-  const linkEl = document.getElementById("decoy-link");
-  if (!statEl || !linkEl) return;
-
-  const count = s.decoyCount || 0;
-  const secs = s.decoySecondsWasted || 0;
-
-  if (count > 0) {
-    statEl.textContent = secs > 0
-      ? `${count} deployed · ${formatDecoyTime(secs)} wasted`
-      : `${count} decoy${count !== 1 ? "s" : ""} deployed`;
-    linkEl.textContent = "Deploy another →";
-  } else {
-    statEl.textContent = "Open Gmail to deploy your first decoy";
-    linkEl.textContent = "Learn more →";
-  }
-
-  linkEl.addEventListener("click", () => {
-    chrome.tabs.create({ url: "https://guardurai.com?ref=ext-decoy" });
-    window.close();
-  });
-});
 
 // ── Passive protection toggle ─────────────────────────────────────────────────
 
