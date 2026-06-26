@@ -22,3 +22,19 @@ export async function getGlobalStats(): Promise<GlobalStats> {
     threatsBlocked: byKey.get("threats_blocked") ?? 0,
   };
 }
+
+/** Atomically bump the global counters. Best-effort, no-ops without Supabase. */
+export async function incrementGlobalStats(
+  pages: number,
+  threats: number,
+): Promise<void> {
+  if (pages <= 0 && threats <= 0) return;
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return;
+
+  const { error } = await supabase.rpc("increment_global_stats", {
+    p_pages: pages,
+    p_threats: threats,
+  });
+  if (error) console.error("[globalStats] increment failed:", error.message);
+}

@@ -15,6 +15,7 @@ import { checkPhonesInText, describePhoneChecks } from "@/app/lib/phoneReputatio
 import { lookupCommunityReports, describeCommunityReports } from "@/app/lib/communityReports";
 import { upsertEntitiesFromVerdict } from "@/app/lib/entityPages";
 import { notifyGuardianOfScam } from "@/app/lib/family";
+import { incrementGlobalStats } from "@/app/lib/globalStats";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -149,6 +150,12 @@ export async function POST(request: Request) {
 
     // Persist entity pages after response is sent — non-blocking, best-effort.
     after(() => void upsertEntitiesFromVerdict(fullVerdict));
+
+    // A scam caught here (e.g. an email scanned via the extension) is a threat
+    // blocked — feed it into the global homepage counter.
+    if (verdict.risk_level === "likely_scam") {
+      after(() => void incrementGlobalStats(0, 1));
+    }
 
     // If a protected family member hits a likely scam, alert their guardian.
     if (userId && verdict.risk_level === "likely_scam") {

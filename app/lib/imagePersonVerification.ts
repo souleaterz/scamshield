@@ -7,10 +7,32 @@ export interface ReverseImageResult {
   matchCount: number;
   exactMatchCount: number;
   topMatches: WebPageMatch[];
+  /** Matches on social / dating / professional sites — likely the real owner. */
+  profileMatches: WebPageMatch[];
   webEntities: string[];
   bestGuessLabel: string | null;
   flags: string[];
 }
+
+// Sites where a person's actual profile is most likely to live. Surfaced first
+// so users can chase down the real identity behind a photo.
+const PROFILE_DOMAINS = [
+  "facebook.com",
+  "instagram.com",
+  "twitter.com",
+  "x.com",
+  "tiktok.com",
+  "linkedin.com",
+  "vk.com",
+  "ok.ru",
+  "snapchat.com",
+  "badoo.com",
+  "pof.com",
+  "match.com",
+  "okcupid.com",
+  "bumble.com",
+  "youtube.com",
+];
 
 export interface AiDetectionResult {
   /** Sightengine score: 0.0–1.0, where 1 = very likely AI-generated. */
@@ -120,10 +142,15 @@ export async function reverseImageSearch(
 
     const flags: string[] = [];
 
-    const topMatches: WebPageMatch[] = pages.slice(0, 8).map((p) => ({
+    const topMatches: WebPageMatch[] = pages.slice(0, 10).map((p) => ({
       url: p.url ?? "",
       title: p.pageTitle ?? null,
     }));
+
+    const profileMatches: WebPageMatch[] = pages
+      .filter((p) => PROFILE_DOMAINS.some((d) => p.url?.includes(d)))
+      .slice(0, 8)
+      .map((p) => ({ url: p.url ?? "", title: p.pageTitle ?? null }));
 
     const stockMatches = pages.filter((p) =>
       STOCK_DOMAINS.some((d) => p.url?.includes(d)),
@@ -176,6 +203,7 @@ export async function reverseImageSearch(
         matchCount: pages.length,
         exactMatchCount: fullMatches.length,
         topMatches,
+        profileMatches,
         webEntities,
         bestGuessLabel,
         flags,

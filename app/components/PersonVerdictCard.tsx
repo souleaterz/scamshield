@@ -2,6 +2,15 @@
 
 import type { PersonVerificationResult } from "@/app/lib/imagePersonVerification";
 
+/** Hostname for display, tolerant of malformed URLs. */
+function hostnameOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+}
+
 const VERDICT_CONFIG = {
   likely_real: {
     label: "Likely Real",
@@ -270,33 +279,72 @@ export default function PersonVerdictCard({
         </div>
       )}
 
-      {/* Web matches */}
-      {result.reverseImage && result.reverseImage.topMatches.length > 0 && (
-        <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
-          <h3 className="mb-2.5 text-xs font-bold uppercase tracking-wide text-slate-500">
-            Pages where this image appears
+      {/* Possible real profiles — social/dating/professional pages using this photo */}
+      {result.reverseImage && result.reverseImage.profileMatches.length > 0 && (
+        <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 shadow-sm">
+          <h3 className="mb-1 text-xs font-bold uppercase tracking-wide text-blue-700">
+            👤 Possible profiles using this photo
           </h3>
+          <p className="mb-2.5 text-xs text-slate-600">
+            This image was found on these social or dating sites. Open them to
+            check whether they belong to the person you&apos;re talking to — or
+            reveal the photo&apos;s real owner.
+          </p>
           <ul className="space-y-2">
-            {result.reverseImage.topMatches.slice(0, 5).map((match, i) => (
+            {result.reverseImage.profileMatches.map((match, i) => (
               <li key={i} className="text-xs">
                 <a
                   href={match.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline break-all"
+                  className="font-medium text-blue-700 hover:underline break-all"
                 >
-                  {match.title ?? match.url}
+                  {hostnameOf(match.url)}
                 </a>
                 {match.title && (
-                  <span className="ml-1 text-slate-400 break-all">
-                    — {new URL(match.url).hostname}
-                  </span>
+                  <span className="ml-1 text-slate-500 break-all">— {match.title}</span>
                 )}
               </li>
             ))}
           </ul>
         </div>
       )}
+
+      {/* Web matches (excluding the profile matches shown above) */}
+      {result.reverseImage &&
+        (() => {
+          const profileUrls = new Set(
+            result.reverseImage.profileMatches.map((m) => m.url),
+          );
+          const otherMatches = result.reverseImage.topMatches.filter(
+            (m) => !profileUrls.has(m.url),
+          );
+          if (otherMatches.length === 0) return null;
+          return (
+            <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+              <h3 className="mb-2.5 text-xs font-bold uppercase tracking-wide text-slate-500">
+                Other pages where this image appears
+              </h3>
+              <ul className="space-y-2">
+                {otherMatches.slice(0, 8).map((match, i) => (
+                  <li key={i} className="text-xs">
+                    <a
+                      href={match.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline break-all"
+                    >
+                      {match.title ?? match.url}
+                    </a>
+                    <span className="ml-1 text-slate-400 break-all">
+                      — {hostnameOf(match.url)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        })()}
 
       {/* Advice */}
       {result.advice.length > 0 && (
